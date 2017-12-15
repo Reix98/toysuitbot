@@ -10,14 +10,6 @@ let inflectors = new Inflectors("book");
 var storage = require('node-persist');
 
 var sessions = {};
-/*
-var toyName = "";
-var toyID = "";
-var toyChannelID = "";
-var toyGagged = false;
-var toyControlled = false;
-var allowParen = true;
-*/
 
 getSessionCount = function(){
     //logger.info("getSessionCount()");
