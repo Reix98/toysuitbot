@@ -1,0 +1,5 @@
+auth.json
+node_modules/
+.node-persist/
+logs
+*.log
