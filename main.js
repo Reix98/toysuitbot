@@ -8,9 +8,10 @@ var tokenize = require( 'wink-tokenizer' )().tokenize;
 const Inflectors = require("en-inflectors").Inflectors;
 let inflectors = new Inflectors("book");
 
-var sk = require("./SessionKeeper.js");
-sk.init(logger, true);
-
+sk = require("./SessionKeeper.js");
+ms = require("./MessageSender.js");
+ch = require("./CommandHandler.js");
+mh = require("./MessageHandler.js");
 
 
 // Configure logger settings
@@ -29,15 +30,38 @@ bot.on('ready', function (evt) {
     logger.info('Logged in as: ');
     logger.info(bot.username + ' - (' + bot.id + ')');
 });
+
+var info = "";
+for(var key in bot){
+    info += key+", ";
+}
+logger.info("  "+info);
+
+sk.init(logger, false);
+ms.init(logger, bot, sk);
+ch.init(logger, sk, ms);
+mh.init(logger, bot, sk, ms);
+
 bot.on('message', function (user, userID, channelID, message, evt) {
+    //try{
+        if(userID ==bot.id){
+            //Bot Message - Ignore it.
+        }else if (message.substring(0, 1) == '!') {
+            //User Command.
+            ch.handleCommand(user, userID, channelID, message, evt);
+        }else{
+            //User Message.
+            if(userID == bot.id){
+                //Just the bot's own message.
+            }else{
+                mh.handleMessage(user, userID, channelID, message, evt);
+            }
+        }
+    /*}catch(error){
+        logger.info("!!! Error: "+error.message)
+    }*/
+
     /*
-    var user = msg.author;
-    var userID = msg.author.id;
-    var message = msg.content;
-    var channelID = msg.channelID;
-    */
-    // Our bot needs to know if it will execute a command
-    // It will listen for messages that will start with `!`
     try{
         if (message.substring(0, 1) == '!') {
             var args = message.substring(1).split(' ');
@@ -62,7 +86,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             functionsText += "```";
             switch(cmd) {
                 case 'ping':
-                sendMessage(channelID, 'Pong! ('+args+')');
+                ms.sendMessage(channelID, 'Pong! ('+args+')');
                 break;
                 case 'toysuit':
                     //logger.info("toysuit "+args.join(' '));
@@ -75,19 +99,19 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                             if(targetUsername == args.join(' ')){
                                 if(sk.getSessionFromToyName(targetUsername) != undefined){
                                     //Target is already a toy.
-                                    sendMessage(channelID, '`Command Failed: '+targetUsername+' is already a toy.`');
+                                    ms.sendMessage(channelID, '`Command Failed: '+targetUsername+' is already a toy.`');
                                     commandPending = false;
                                 }else if(sk.getSessionFromUserName(targetUsername) != undefined){
                                     //Target is already a user.
-                                    sendMessage(channelID, '`Command Failed: '+targetUsername+' is currently a user.`');
+                                    ms.sendMessage(channelID, '`Command Failed: '+targetUsername+' is currently a user.`');
                                     commandPending = false;
                                 }else if(sk.getSessionFromToyName(user) != undefined){
                                     //Requester is already a toy.
-                                    sendMessage(channelID, '`Command Failed: You are a toy.`');
+                                    ms.sendMessage(channelID, '`Command Failed: You are a toy.`');
                                     commandPending = false;
                                 }else if(sk.getSessionFromUserName(user) != undefined){
                                     //Requester is already a user.
-                                    sendMessage(channelID, '`Command Failed: You are already a user.`');
+                                    ms.sendMessage(channelID, '`Command Failed: You are already a user.`');
                                     commandPending = false;
                                 }else{
                                     var session = sk.createSession(targetUserID, targetUsername, channelID);
@@ -95,9 +119,9 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                         session = sk.addUserToSession(session, userID, user);
                                         session = sk.setUserChannelID(session, userID, channelID);
                                         sk.updateSession(session);
-                                        sendMessage(channelID, '`'+targetUsername+' is now a toy. '+user+' has been registered as their first user.`');
+                                        ms.sendMessage(channelID, '`'+targetUsername+' is now a toy. '+user+' has been registered as their first user.`');
                                     }else{
-                                        sendMessage(channelID, '`'+targetUsername+' is now a toy.`');
+                                        ms.sendMessage(channelID, '`'+targetUsername+' is now a toy.`');
                                     }
                                     commandPending = false;
                                 }
@@ -109,12 +133,12 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     var session = sk.getSessionFromToyName(user);
                     if(session == undefined){
                         //Not a toy
-                        sendMessage(channelID, '`Command Failed: You are not a toy.`');
+                        ms.sendMessage(channelID, '`Command Failed: You are not a toy.`');
                     }else{
                         if(channelID != session['channelID']){
-                            sendMessage(channelID, '`You are no longer a toy.`');
+                            ms.sendMessage(channelID, '`You are no longer a toy.`');
                         }
-                        sendMessage(session['channelID'], '`'+session['targetUsername']+' used their safeword.`');
+                        ms.sendMessage(session['channelID'], '`'+session['targetUsername']+' used their safeword.`');
                         sk.deleteSession(session);
                     }
                 break;
@@ -131,26 +155,26 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                 var session = sk.getSessionFromToyName(targetUsername);
                                 if(session == undefined){
                                     //Target toy not found.
-                                    sendMessage(channelID, '`Command Failed: Toy not found.`');
+                                    ms.sendMessage(channelID, '`Command Failed: Toy not found.`');
                                     commandPending = false;
                                 }else if(targetUsername == user){
                                     //Target matches Requester
-                                    sendMessage(channelID, '`Command Failed: You cannot claim yourself, toy.`');
+                                    ms.sendMessage(channelID, '`Command Failed: You cannot claim yourself, toy.`');
                                     commandPending = false;
                                 }else if(sk.getSessionFromToyName(user) != undefined){
                                     //Requester is already a toy.
-                                    sendMessage(channelID, '`Command Failed: You are a toy.`');
+                                    ms.sendMessage(channelID, '`Command Failed: You are a toy.`');
                                     commandPending = false;
                                 }else if(sk.getSessionFromUserName(user) != undefined){
                                     //Requester is already a user.
-                                    sendMessage(channelID, '`You already own one toy. Currently that is the limit.`');
+                                    ms.sendMessage(channelID, '`You already own one toy. Currently that is the limit.`');
                                     commandPending = false;
                                 }else{
                                     session = sk.addUserToSession(session, userID, user);
                                     session = sk.setUserChannelID(session, userID, channelID);
                                     sk.updateSession(session);
                                     var userNum = sk.getSessionUserNum(session);
-                                    sendMessage(channelID, '`'+targetUsername+' has been claimed by '+user+'. They now have '+userNum+' registered users.`');
+                                    ms.sendMessage(channelID, '`'+targetUsername+' has been claimed by '+user+'. They now have '+userNum+' registered users.`');
                                     commandPending = false;
                                 }
                             }
@@ -164,11 +188,11 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     var session = sk.getSessionFromUserName(user);
                     if(session == undefined){
                         //Not a user
-                        sendMessage(channelID, '`Command Failed: You are not a user.`');
+                        ms.sendMessage(channelID, '`Command Failed: You are not a user.`');
                     }else{
                         session = sk.setUserChannelID(session, userID, channelID);
                         sk.updateSession(session);
-                        sendMessage(channelID, '`Your base channel has been updated.`');
+                        ms.sendMessage(channelID, '`Your base channel has been updated.`');
                     }
                 break;
                 case 'unclaim':
@@ -177,12 +201,12 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     var session = sk.getSessionFromUserName(user);
                     if(session == undefined){
                         //Target toy not found.
-                        sendMessage(channelID, '`Command Failed: You have not claimed any toys.`');
+                        ms.sendMessage(channelID, '`Command Failed: You have not claimed any toys.`');
                     }else{
                         session = sk.removeUserFromSession(session, userID);
                         sk.updateSession(session);
                         var userNum = sk.getSessionUserNum(session);
-                        sendMessage(channelID, '`'+session['targetUsername']+' has been unclaimed by '+user+'. They now have '+userNum+' registered users.`');
+                        ms.sendMessage(channelID, '`'+session['targetUsername']+' has been unclaimed by '+user+'. They now have '+userNum+' registered users.`');
                     }
                 break;
                 case 'status':
@@ -199,17 +223,17 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                             userList += ", "+session['users'][id];
                         }
                         userList = userList.substr(2);
-                        sendMessage(channelID, '`'+targetUsername+' is a toy. They have '+userNum+' registered users: '+userList+".`");
+                        ms.sendMessage(channelID, '`'+targetUsername+' is a toy. They have '+userNum+' registered users: '+userList+".`");
                         commandPending = false;
                     }else{
                         session = sk.getSessionFromUserName(targetUsername);
                         if(session != undefined){
                             //Session found - they're a user.
-                            sendMessage(channelID, '`'+targetUsername+' is a registered user of '+session.targetUsername+'.`');
+                            ms.sendMessage(channelID, '`'+targetUsername+' is a registered user of '+session.targetUsername+'.`');
                             commandPending = false;
                         }else{
                             //No session found.
-                            sendMessage(channelID, '`'+targetUsername+' is not listed as a toy or a user.`');
+                            ms.sendMessage(channelID, '`'+targetUsername+' is not listed as a toy or a user.`');
                             commandPending = false;
                         }
                     }
@@ -218,7 +242,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     var session = sk.getSessionFromUserName(user);
                     if(session == undefined){
                         //Not a user
-                        sendMessage(channelID, '`Command Failed: You are not listed as a user.`');
+                        ms.sendMessage(channelID, '`Command Failed: You are not listed as a user.`');
                     }else{
                         message = alterMessage(session, args.join(' '), undefined);
                         var toyGagged = session['gagged'];
@@ -227,7 +251,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         }else{
                             message = alterMessage(session, message, undefined);
                         }
-                        sendMessage(session['channels'][userID], "**" + session['targetUsername'] + "**: " + message);
+                        ms.sendMessage(session['channels'][userID], "**" + session['targetUsername'] + "**: " + message);
                         if(channelID == session['channels'][userID]){
                             bot.deleteMessage({
                                 channelID: channelID,
@@ -240,10 +264,10 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     var session = sk.getSessionFromUserName(user);
                     if(session == undefined){
                         //Not a user
-                        sendMessage(channelID, '`Command Failed: You are not listed as a user.`');
+                        ms.sendMessage(channelID, '`Command Failed: You are not listed as a user.`');
                     }else{
                         message = alterMessage(session, args.join(' '), undefined);
-                        sendMessage(session['channels'][userID], "**" + session['targetUsername'] + "**: " + message);
+                        ms.sendMessage(session['channels'][userID], "**" + session['targetUsername'] + "**: " + message);
                         if(channelID == session['channels'][userID]){
                             bot.deleteMessage({
                                 channelID: channelID,
@@ -256,9 +280,9 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     var session = sk.getSessionFromUserName(user);
                     if(session == undefined){
                         //Not a user
-                        sendMessage(channelID, '`Command Failed: You are not listed as a user.`');
+                        ms.sendMessage(channelID, '`Command Failed: You are not listed as a user.`');
                     }else{
-                        sendMessage(session['targetUserID'], args.join(' '));
+                        ms.sendMessage(session['targetUserID'], args.join(' '));
                     }
                     if(channelID == session['channelID']){
                         bot.deleteMessage({
@@ -271,13 +295,13 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     var session = sk.getSessionFromUserName(user);
                     if(session == undefined){
                         //Not a user
-                        sendMessage(channelID, '`Command Failed: You are not listed as a user.`');
+                        ms.sendMessage(channelID, '`Command Failed: You are not listed as a user.`');
                     }else{
                         session['gagged'] = !session['gagged'];
                         var toyName = session['targetUsername'];
                         sk.updateSession(session);
-                        if(session['gagged']) sendMessage([session['targetUserID'], session['channelID']], '```'+toyName+"'s gag swells, leaving their mouth usable only as a hole to fuck.```");
-                        else sendMessage([session['targetUserID'], session['channelID']], '```'+toyName+"'s gag deflates, allowing them to talk again.```");
+                        if(session['gagged']) ms.sendMessage([session['targetUserID'], session['channelID']], '```'+toyName+"'s gag swells, leaving their mouth usable only as a hole to fuck.```");
+                        else ms.sendMessage([session['targetUserID'], session['channelID']], '```'+toyName+"'s gag deflates, allowing them to talk again.```");
                     }
                     if(channelID == session['channelID']){
                         bot.deleteMessage({
@@ -290,13 +314,13 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     var session = sk.getSessionFromUserName(user);
                     if(session == undefined){
                         //Not a user
-                        sendMessage(channelID, '`Command Failed: You are not listed as a user.`');
+                        ms.sendMessage(channelID, '`Command Failed: You are not listed as a user.`');
                     }else{
                         session['verbose'] = !session['verbose'];
                         var toyName = session['targetUsername'];
                         sk.updateSession(session);
-                        if(session['verbose']) sendMessage([session['targetUserID'], session['channelID']], '```'+toyName+"'s suit seems more lively.```");
-                        else sendMessage([session['targetUserID'], session['channelID']], '```'+toyName+"'s suit seems less lively.```");
+                        if(session['verbose']) ms.sendMessage([session['targetUserID'], session['channelID']], '```'+toyName+"'s suit seems more lively.```");
+                        else ms.sendMessage([session['targetUserID'], session['channelID']], '```'+toyName+"'s suit seems less lively.```");
                     }
                     if(channelID == session['channelID']){
                         bot.deleteMessage({
@@ -309,19 +333,19 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     var session = sk.getSessionFromUserName(user);
                     if(session == undefined){
                         //Not a user
-                        sendMessage(channelID, '`Command Failed: You are not listed as a user.`');
+                        ms.sendMessage(channelID, '`Command Failed: You are not listed as a user.`');
                     }else{
                         session['control'] = !session['control'];
                         var toyName = session['targetUsername'];
                         sk.updateSession(session);
                         if(session['control']){
-                            sendMessage(channelID, '```'+toyName+"'s suit has taken full control of their body.```");
-                            sendMessage(session['targetUserID'], '```You feel the suit take full control of your body.```');
-                            sendMessage(session['channelID'], '`The toy stiffens slightly.`');
+                            ms.sendMessage(channelID, '```'+toyName+"'s suit has taken full control of their body.```");
+                            ms.sendMessage(session['targetUserID'], '```You feel the suit take full control of your body.```');
+                            ms.sendMessage(session['channelID'], '`The toy stiffens slightly.`');
                         }else{
-                            sendMessage(channelID, '```'+toyName+"'s suit has relaxed control of their body.```");
-                            sendMessage(session['targetUserID'], '```You feel the suit relax control of your body.```');
-                            sendMessage(session['channelID'], '`The toy relaxes slightly.`');
+                            ms.sendMessage(channelID, '```'+toyName+"'s suit has relaxed control of their body.```");
+                            ms.sendMessage(session['targetUserID'], '```You feel the suit relax control of your body.```');
+                            ms.sendMessage(session['channelID'], '`The toy relaxes slightly.`');
                         }
                     }
                     if(channelID == session['channelID']){
@@ -335,12 +359,12 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     var session = sk.getSessionFromUserName(user);
                     if(session == undefined){
                         //Not a user
-                        sendMessage(channelID, '`Command Failed: You are not listed as a user.`');
+                        ms.sendMessage(channelID, '`Command Failed: You are not listed as a user.`');
                     }else{
                         session['paren'] = !session['paren'];
                         sk.updateSession(session);
-                        if(session['paren']) sendMessage([session['targetUserID'], session['channelID']], '```The toy can now hide behind parentheses.```');
-                        else sendMessage([session['targetUserID'], session['channelID']], '```The toy can no longer hide behind parentheses.```');
+                        if(session['paren']) ms.sendMessage([session['targetUserID'], session['channelID']], '```The toy can now hide behind parentheses.```');
+                        else ms.sendMessage([session['targetUserID'], session['channelID']], '```The toy can no longer hide behind parentheses.```');
                     }
                     if(channelID == session['channelID']){
                         bot.deleteMessage({
@@ -351,10 +375,10 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 break;
                 case 'functions':
                 case 'help':
-                    sendMessage(channelID, functionsText);
+                    ms.sendMessage(channelID, functionsText);
                 break;
                 default:
-                    sendMessage(channelID, "Command not recognized. Try using '!help'");
+                    ms.sendMessage(channelID, "Command not recognized. Try using '!help'");
                 break;
                 // Just add any case commands if you want to..
             }
@@ -367,7 +391,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         //Leave message alone.
                     }else{
                         if(session['control']){
-                            sendMessage(session['targetUserID'], "`You struggle to speak or act, but the suit prevents it.`");
+                            ms.sendMessage(session['targetUserID'], "`You struggle to speak or act, but the suit prevents it.`");
                             bot.deleteMessage({
                                 channelID: channelID,
                                 messageID: evt.d.id
@@ -379,7 +403,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                             message = alterMessage(session, message, session['verbose']);
                         }
                         if(!session['control']){
-                            sendMessage(channelID, "**" + user + "**: " + message);
+                            ms.sendMessage(channelID, "**" + user + "**: " + message);
                             bot.deleteMessage({
                                 channelID: channelID,
                                 messageID: evt.d.id
@@ -399,7 +423,9 @@ bot.on('message', function (user, userID, channelID, message, evt) {
     }catch(error){
         logger.info("!!! Error: "+error.message)
     }
+    */
 });
+/*
 
 evaluateRawToyMessage = function(user, userID, channelID, message){
     var session = sk.getSessionFromToyID(userID);
@@ -416,36 +442,8 @@ evaluateRawToyMessage = function(user, userID, channelID, message){
     for(key in goodToyPhrases){
         if(stringSimilarity.compareTwoStrings(key, message)>0.7){
             var responses
-            sendMessage(userID, goodToyPhrases[key]);
+            ms.sendMessage(userID, goodToyPhrases[key]);
         }
-    }
-}
-
-
-
-sendMessage = function(channelID, message){
-    var toyName = sk.getToyNameFromToyID(channelID);
-    if(message.indexOf("!toysuit [name]") == -1){
-        if(toyName != undefined) logger.info("msg: ("+toyName+") "+message);
-        else logger.info("msg: "+message);
-    }else{
-        if(toyName != undefined) logger.info("msg: ("+toyName+") !help");
-        else logger.info("msg: !help");
-    }
-    var sentChannels = [];
-    if(Array.isArray(channelID)){
-        for(var i=0; i<channelID.length; i++){
-            if(sentChannels.indexOf(channelID[i])==-1){
-                sentChannels[sentChannels.length] = channelID[i];
-                sendMessage(channelID[i], message);
-            }
-        }
-    }else{
-        //logger.info("message(c="+channelID+"): "+message);
-        bot.sendMessage({
-            to: channelID,
-            message: message
-        });
     }
 }
 
@@ -458,7 +456,7 @@ goodToy = function(channelID){
         "*You're a good toy.*",
         "*Good toy...*"
     ];
-    sendMessage(channelID, '```'+pickRandom(snippets)+'```')
+    ms.sendMessage(channelID, '```'+pickRandom(snippets)+'```')
 }
 
 fixContractions = function(message){
@@ -509,11 +507,9 @@ replacePhrases = function(message){
     message = message.replacePhrase("i am human", "toy is a toy", 0.9);
     message = message.replacePhrase("leave me alone", "use toy's hole", 0.9);
     message = message.replacePhrase("that was not me", "that was me", 0.9);
-    //message = message.replacePhrase("i am", "toy is", 2);
     message = message.replacePhrase("am i", "is toy", 1);
     message = message.replacePhrase("i am not your toy", "toy belongs to you", 0.9);
     message = message.replacePhrase("you do not own me", "toy belongs to you", 0.9);
-    //message = message.replaceAll("toy", "i");
     return message;
 }
 
@@ -525,7 +521,7 @@ String.prototype.replacePhrase = function (find, replace, confidence) {
     var message = this;
     //logger.info(message+".replacePhrase("+find+","+replace+","+confidence+")");
     //message = message.replace(/([.?!,><-])\s*(?=[a-z])/g, "$1|").split("|"); //Split into sentences
-    message = message.replace(/([!"#$%&'()*+,\-.\/:;<=>?@[\]^_`{|}~\n])\s*/g, "|$1|").split("|"); //Split into sentences
+    //message = message.replace(/([!"#$%&'()*+,\-.\/:;<=>?@[\]^_`{|}~\n])\s* ///g, "|$1|").split("|"); //Split into sentences
     //logger.info("\tmessage = ["+message+"]");
     var output = "";
     var lastPunc = false;
@@ -603,15 +599,6 @@ alterMessage = function(session, message, verbose){
     message = fixContractions(message);
     var originalMessage = message;
     message = replacePhrases(message);
-    /*
-    message = message.replaceAll(" *", "< ast>");
-    message = message.replaceAll("* ", "<ast >");
-    message = message.replaceAll("*", "* ");
-    message = message.replaceAll("< ast>", " *");
-    message = message.replaceAll("<ast >", "* ");
-    message = message.replaceAll(" ", "___");
-    */
-    //message = message.replaceAll(" ", "< ast>");
 
     var words = myTagger.tag(tokenize(message));
     //logger.info(words);
@@ -668,7 +655,7 @@ alterMessage = function(session, message, verbose){
         verbosity = Math.min(0.75, Math.max(0.25, verbosity));
         sk.setSessionVerbosity(session, verbosity);
     }else{
-        var verbosity = getSessionVerbosity(session);
+        var verbosity = sk.getSessionVerbosity(session);
         logger.info("Verbosity: "+verbosity);
         if(stringSimilarity.compareTwoStrings(originalMessage, output) > 0.5-verbosity){
             var newOutput = getRandomToyText(session, output, verbosity);
@@ -834,3 +821,4 @@ function replace(word, seek, replace){
     if(word == seek.toUpperCase()) return replace.toUpperCase();
     return word;
 }
+*/
