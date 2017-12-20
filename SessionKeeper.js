@@ -2,9 +2,33 @@ var storage = require('node-persist');
 
 var logger;
 
-var sessions = {};
+//var sessions = {};
 var profiles = {};
 storage.initSync();
+
+
+init = function(log, forceCacheRefresh){
+    logger = log;
+    if(storage.getItemSync("creation date") == undefined || forceCacheRefresh){
+        logger.info("No cache found. Creating new cache.");
+        storage.clearSync();
+        storage.setItemSync("creation date", new Date().toDateString());
+        storage.setItemSync("sessions", sessions);
+        storage.setItemSync("profiles", profiles);
+    }else{
+        logger.info("Previous cache loaded.");
+        //profiles = storage.getItemSync("profiles");
+        //logger.info("profiles data: "+profiles);
+    }
+    logger.info("Cache was created: "+(storage.getItemSync("creation date")));
+    //var sessionCount = getSessionCount();
+    //var toyList = getToyList();
+    //logger.info("There are currently "+sessionCount+" sessions in storage:");
+    //for(var i=0; i<toyList.length; i++) logger.info("\t- "+toyList[i]);
+
+}
+
+/*
 
 getSessionCount = function(){
     //logger.info("getSessionCount()");
@@ -38,34 +62,6 @@ getSessionFromToyID = function(toyID){
 getSessionVerbosity = function(session){
     if(session['verbosity'] == undefined) return 0;
     return session['verbosity'];
-}
-
-init = function(log, forceCacheRefresh){
-    logger = log;
-    if(storage.getItemSync("creation date") == undefined || forceCacheRefresh){
-        logger.info("No cache found. Creating new cache.");
-        storage.clearSync();
-        storage.setItemSync("creation date", new Date().toDateString());
-        storage.setItemSync("sessions", sessions);
-        storage.setItemSync("profiles", profiles);
-    }else{
-        logger.info("Previous cache loaded.");
-        //profiles = storage.getItemSync("profiles");
-        //logger.info("profiles data: "+profiles);
-    }
-    logger.info("Cache was created: "+(storage.getItemSync("creation date")));
-    var sessionCount = getSessionCount();
-    var toyList = getToyList();
-    logger.info("There are currently "+sessionCount+" sessions in storage:");
-    for(var i=0; i<toyList.length; i++) logger.info("\t- "+toyList[i]);
-
-    /*
-    setInterval(function(){
-        logger.info("profiles data: "+profiles);
-        storage.setItemSync("profiles", profiles);
-        logger.info("-Syncing Profile Data-");
-    }, 5000);
-    */
 }
 
 createSession = function(targetUserID, targetUsername, channelID){
@@ -296,7 +292,7 @@ getUserIDFromUserName = function(username){
 
 module.exports = {
     init: init,
-    getSessionFromToyName: getSessionFromToyName,
+    /*getSessionFromToyName: getSessionFromToyName,
     getSessionFromUserName: getSessionFromUserName,
     createSession: createSession,
     addUserToSession: addUserToSession,
@@ -307,7 +303,7 @@ module.exports = {
     setUserChannelID: setUserChannelID,
     getSessionFromToyID: getSessionFromToyID,
     getToyNameFromToyID: getToyNameFromToyID,
-    getSessionVerbosity: getSessionVerbosity,
+    getSessionVerbosity: getSessionVerbosity,*/
     getProfileFromUserID: getProfileFromUserID,
     getProfileFromUserName: getProfileFromUserName,
     createProfile: createProfile,

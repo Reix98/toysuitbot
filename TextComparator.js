@@ -232,30 +232,8 @@ insertRandomToyText = function(text){
         "toy is happy",
         "please fuck toy"
     ];
-    text = text.split(" ");
-    var insertions = Math.max(1, Math.floor(Math.random()*2 + text.length/5 - 1));
-    for(var i=0; i<insertions; i++){
-        logger.info("\t\tInsertion #"+i);
-        logger.info("\t\tText Length: "+text.length);
-        var rangeMin = 0.2 + 0.8*(i*(text.length/insertions));
-        var rangeMax = 0.8*(i+1)*(text.length/insertions);
-        logger.info("\t\trangeMin: "+rangeMin);
-        logger.info("\t\trangeMax: "+rangeMax);
-
-        var insertPoint = Math.floor(Math.random()*(rangeMax-rangeMin)+rangeMin);
-        var snippet = ("*"+pickRandom(snippets)+"*").split(" ");
-        for(j=0; j<snippet.length; j++){
-            text[j+insertPoint] = snippet[j];
-        }
-        logger.info("\t\tinsertPoint: "+insertPoint);
-        logger.info("\t\tsnippet: "+snippet);
-        logger.info("\t\ttext: "+text);
-        //text = text.splice(insertPoint, 0, snippet);
-        //text[insertPoint] += " "+snippet;
-        logger.info("\t\ttext: "+text);
-    }
-    text = text.join(" ");
-    return text;
+    var snippet = ("*"+pickRandom(snippets)+"*");
+    return snippet;
 }
 
 rateToyText = function(text){
