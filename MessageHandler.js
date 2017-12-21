@@ -14,14 +14,14 @@ init = function(log, bot, sk, ms){
 
 handleMessage = function(user, userID, channelID, message, evt){
     var userProfile = sessionKeeper.getProfileFromUserID(userID);
-    if(userProfile == undefined) return 0;
+    if(userProfile == null) return 0;
 
     userProfile['lastChannelID'] = channelID;
     sessionKeeper.updateProfile(userProfile);
     
     if(userProfile['mode'] == "suited"){
         var name = userProfile['name'];
-        if(userProfile['nickname'] != undefined) name = userProfile['nickname'];
+        if(userProfile['nickname'] != null) name = userProfile['nickname'];
         deleteMessage(channelID, evt.d.id);
 
         if(userProfile['controlled']){
@@ -31,6 +31,7 @@ handleMessage = function(user, userID, channelID, message, evt){
             messageSender.sendMessage(channelID, "**" + name + "**: " + message);
         }else{
             message = textComp.processToyText(message);
+			if(message == "") return;
             messageSender.sendMessage(channelID, "**" + name + "**: " + message);
         }
         

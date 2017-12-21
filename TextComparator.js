@@ -5,7 +5,8 @@ var tagger = require( 'wink-pos-tagger' );
 var myTagger = tagger();
 var tokenize = require( 'wink-tokenizer' )().tokenize;
 const Inflectors = require("en-inflectors").Inflectors;
-let inflectors = new Inflectors("book");
+var inflectors = new Inflectors("book");
+var unzalgo = require('unzalgo');
 
 var fs = require('fs');
 var goodToyText;
@@ -28,6 +29,60 @@ init = function(log, sk){
 
 processToyText = function(message){
     
+	//Check for things that should never happen before we parse it.
+	
+	//If there are numbers, let's do some stuff.
+	var numbers = message.match(/\d+/g);
+	
+	if(numbers != null) {
+	
+		//If there are only a few numbers, poor toy can't count...
+		if(numbers.length < 6) {
+			var foundTooLargeNumber = false;
+			message = message.replace(/\d+/g, function(match){
+				var num = parseInt(match);
+				if(isNaN(num)) return match;
+				if(!Number.isSafeInteger(num)) {
+					//The message will be deleted for this. They're up to something.
+					foundTooLargeNumber = true;
+					return "";
+				}
+				//The toy can be wrong by up to about 1/3 or so...
+				//(Multiply by 2/3 because we'll center this around the number they posted, so the error can be positive or negative.)
+				var maxError = num*(2/3);
+				//By a different amount each time, of course!
+				var wrongFactor = maxError*Math.random();
+				var wrongNum = Math.round(num - (maxError/2) + wrongFactor);
+				return wrongNum.toString();
+			});
+			if(foundTooLargeNumber) return insertRandomToyText();
+		}else {
+			//But if there are lots of numbers, they're probably up to something.
+			return insertRandomToyText();
+		}
+	
+	}
+	
+	//So, how many actual sequences longer than 2 letters are there?
+	var bigWords = (message.match(/([A-Za-z\d]{3,})/g)||[]).length;
+	//...Compared to the number that aren't?
+	var shortWords = (message.match(/\b([A-Za-z\d]{1,2})\b/g)||[]).length;
+	//In natural speech, the ratio is about 1/3 as many 1-to-2-letter words at most, even for children.
+	//So if the ratio goes way past that in favor of short words, they're up to something.
+	if(bigWords == 0 || (shortWords/bigWords) > 0.4) return insertRandomToyText();
+	
+	
+	//No preformatted text. This could only be used for ASCII art or something.
+	message = message.replace(/`{3}[\n\t\r\w\d\s]*`{3}/gm, function(match) {
+		return match.substr(3, match.length-6);
+	});
+	message = message.replace(/`[^`]+`+?/g, function(match) {
+		return match.substr(1, match.length-2);
+	});
+	
+	//Remove zalgo, because of course a tester tried that!
+	message = unzalgo.clean(message);
+	
     message = message.replace(/([!,.:;~\n])\s*/g, "|$1|").split("|"); //Split into sentences
     logger.info(message);
     for(var i=0; i<message.length; i++){

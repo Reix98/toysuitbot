@@ -8,8 +8,8 @@
         "discord.io": "github:woor/discord.io#gateway_v6",
         "en-inflectors": "^1.0.12",
         "node-cache": "^4.1.1",
-        "node-persist": "^2.1.0",
         "string-similarity": "^1.2.0",
+        "unzalgo": "^2.0.5",
         "wink-pos-tagger": "^0.4.0",
         "winston": "^2.4.0"
     }
