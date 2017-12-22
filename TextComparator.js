@@ -6,7 +6,6 @@ var myTagger = tagger();
 var tokenize = require( 'wink-tokenizer' )().tokenize;
 const Inflectors = require("en-inflectors").Inflectors;
 var inflectors = new Inflectors("book");
-var unzalgo = require('unzalgo');
 
 var fs = require('fs');
 var goodToyText;
@@ -31,8 +30,19 @@ processToyText = function(message){
     
 	//Check for things that should never happen before we parse it.
 	
-	//Remove zalgo, because of course a tester tried that!
-	message = unzalgo.clean(message);
+	//Remove all non-ASCII text. Only English is supported, and pretty much anything else is probably trying to cheat.
+	for(var i = message.length-1; i >= 0; i--) {
+		if(message.charCodeAt(i) >= 255) message = message.slice(0,i)+message.slice(i+1);
+	}
+	
+	//Remove custom Discord emotes.
+	message = message.replace(/<:[A-za-z\d_-]+:\d+>/g, '');
+	
+	//Remove normal emotes. (Emoji in the UTF range are already purged by the above.)
+	message = message.replace(/:[A-za-z\d_-]+:/g, '');
+	
+	message = message.trim();
+	if(message == "") return "";
 	
 	//If there are numbers, let's do some stuff.
 	var numbers = message.match(/\d+/g);
@@ -298,6 +308,7 @@ alterMessage = function(message, simpleMode){
 
 insertRandomToyText = function(text){
     logger.info("insertRandomToyText()");
+	console.trace('Trace:');
     var snippets = [
         "please fuck toy",
         "toy loves being used",

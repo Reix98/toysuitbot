@@ -559,9 +559,9 @@ gag = function(profile, args, context){
 
     sessionKeeper.updateProfile(targetProfile);
     if(targetProfile['gagged']){
-        messageSender.sendAction(context.channelID, getName(targetProfile)+"'s gag swells, leaving their mouth usable only as a hole to fuck.");
+        messageSender.sendAction(context.channelID, getName(targetProfile)+"'s gag swells, leaving its mouth usable only as a hole to fuck.");
     }else{
-        messageSender.sendAction(context.channelID, getName(targetProfile)+"'s gag deflates, allowing them to talk again.");
+        messageSender.sendAction(context.channelID, getName(targetProfile)+"'s gag deflates, allowing it to talk again.");
     }
 }
 
