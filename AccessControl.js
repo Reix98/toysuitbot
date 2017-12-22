@@ -21,7 +21,8 @@ getRecursiveOwners = function(toyProfile) {
 		if(out.indexOf(nextOwner) >= 0) break;
 		
 		out.push(nextOwner);
-		if(nextOwner['ownerID'] != null) nextOwner = sk.getProfileFromUserID(nextOwner['ownerID']);
+		var nextOwnerProfile = sk.getProfileFromUserID(nextOwner);
+		if(nextOwnerProfile != null && nextOwnerProfile['ownerID'] != null) nextOwner = nextOwnerProfile['ownerID'];
 		else nextOwner = null;
 	}
 	
