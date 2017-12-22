@@ -67,9 +67,8 @@ processToyText = function(message){
 	var bigWords = (message.match(/([A-Za-z\d]{3,})/g)||[]).length;
 	//...Compared to the number that aren't?
 	var shortWords = (message.match(/\b([A-Za-z\d]{1,2})\b/g)||[]).length;
-	//In natural speech, the ratio is about 1/3 as many 1-to-2-letter words at most, even for children.
-	//So if the ratio goes way past that in favor of short words, they're up to something.
-	if(bigWords == 0 || (shortWords/bigWords) > 0.4) return insertRandomToyText();
+	//If there are *way* more short phrases than long ones, this is suspicious.
+	if((shortWords/Math.max(bigWords,1)) >= 3.0 || shortWords > (bigWords+20)) return insertRandomToyText();
 	
 	
 	//No preformatted text. This could only be used for ASCII art or something.
@@ -90,10 +89,11 @@ processToyText = function(message){
             var text = message[i];
             var rating = rateToyText(text);
 
-            if(rating > 0.25){
+            /*if(rating > 0.25){
                 //It's good as is, leave it.
                 //return text;
-            }else if(rating > -0.1){
+            }else */
+			if(rating > -0.1){
                 //Could use some work
                 text = text.toLowerCase();
                 text = fixContractions(text);
@@ -120,6 +120,21 @@ processToyText = function(message){
 
 replacePhrases = function(message){
     //logger.info("replacePhrases()");
+    message = message.replacePhrase("suit", "toysuit", 0.9);
+    message = message.replacePhrase("toy's toysuit", "the toysuit", 0.9);
+    message = message.replacePhrase("this toysuit", "the toysuit", 0.9);
+    message = message.replacePhrase("leave the toysuit", "be a toy forever", 0.9);
+    message = message.replacePhrase("leave toysuit", "be a toy forever", 0.9);
+    message = message.replacePhrase("stop being a toy", "be a toy forever", 0.9);
+    message = message.replacePhrase("stop being toy", "be a toy forever", 0.9);
+    message = message.replacePhrase("taken out of the toysuit", "kept in the toysuit", 0.9);
+    message = message.replacePhrase("out of the toysuit", "in the toysuit", 0.9);
+    message = message.replacePhrase("remove the toysuit", "keep me in the toysuit", 0.9);
+    message = message.replacePhrase("removed from the toysuit", "kept in the toysuit", 0.9);
+    message = message.replacePhrase("outside of the toysuit", "kept in the toysuit", 0.9);
+    message = message.replacePhrase("outside the toysuit", "kept in the toysuit", 0.9);
+    message = message.replacePhrase("out of the toysuit", "kept in the toysuit", 0.9);
+    message = message.replacePhrase("out of the toysuit", "kept in the toysuit", 0.9);
     message = message.replacePhrase("i am not a toy", "toy is a toy", 0.9);
     message = message.replacePhrase("help me", "use me", 0.9);
     message = message.replacePhrase("let me out", "use me", 0.9);
@@ -132,8 +147,11 @@ replacePhrases = function(message){
     message = message.replacePhrase("i do not want", "toy needs", 0.9);
     message = message.replacePhrase("i hate you", "toy loves you", 0.9);
     message = message.replacePhrase("i hate this", "toy loves this", 0.9);
+    message = message.replacePhrase("i want out of here", "toy never wants to leave the toysuit", 0.9);
+    message = message.replacePhrase("i want out of this", "toy never wants to leave the toysuit", 0.9);
     message = message.replacePhrase("i want out", "toy never wants to leave the toysuit", 0.9);
     message = message.replacePhrase("i can not get out", "toy never wants to leave the toysuit", 0.9);
+    message = message.replacePhrase("escape from", "be fucked in", 0.9);
     message = message.replacePhrase("escape", "be fucked", 0.9);
     message = message.replacePhrase("get out of", "be used in", 0.9);
     message = message.replacePhrase("it is making me", "toy will", 0.9);
@@ -143,6 +161,11 @@ replacePhrases = function(message){
     message = message.replacePhrase("am i", "is toy", 1);
     message = message.replacePhrase("i am not your toy", "toy belongs to you", 0.9);
     message = message.replacePhrase("you do not own me", "toy belongs to you", 0.9);
+	while(message.indexOf('not not') >= 0) message = message.replacePhrase("not not", "not");
+    message = message.replacePhrase("please do not", "please", 0.9);
+    message = message.replacePhrase("please don't", "please", 0.9);
+    message = message.replacePhrase("do not", "", 0.9);
+    message = message.replacePhrase("don't", "", 0.9);
     return message;
 }
 String.prototype.replacePhrase = function (find, replace, confidence) {
@@ -309,6 +332,9 @@ rateToyText = function(text){
     //logger.info(badStats);
 
     var output = goodStats.mean - badStats.mean + closestGoodSim - closestBadSim;
+	//If they used self pronouns or the word 'out', it can never be rated good.
+	var split = text.toLowerCase().trim().split(' ');
+	if(split.indexOf('i') >= 0 || split.indexOf('my') >= 0 || split.indexOf('me') >= 0 || split.indexOf('mine') >= 0 || split.indexOf('out') >= 0) output = Math.min(output, 0);
     logger.info("rateToyText(): "+ round(output, 1));
     logger.info("\t'"+text+"'");
     return output;

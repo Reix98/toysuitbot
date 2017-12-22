@@ -16,7 +16,7 @@ getRecursiveOwners = function(toyProfile) {
 	var nextOwner = toyProfile['ownerID'];
 	var out = [];
 	
-	while(nextOwner != null && nextOwner['userID'] != null) {
+	while(nextOwner != null) {
 		//Keep recursively-looped owners from breaking everything.
 		if(out.indexOf(nextOwner) >= 0) break;
 		
