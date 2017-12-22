@@ -298,7 +298,8 @@ createProfileFromUserID = function(userID){
 	var users = discordBot.users;
 	
 	if(!users.hasOwnProperty(userID)) {
-		logger.error('User ID "'+userID+'" does not exist, but was passed to createProfile?');
+		logger.error('User ID "'+userID+'" does not exist, but was passed to createProfileFromUserID?');
+		console.trace("DEBUG: Stack trace for bad createProfileFromUserID call:");
 		return null;
 	}
 	

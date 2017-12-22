@@ -15,13 +15,14 @@ init = function(log, sk){
 getRecursiveOwners = function(toyProfile) {
 	var nextOwner = toyProfile['ownerID'];
 	var out = [];
-	if(nextOwner != null) out += nextOwner;
 	
-	while(nextOwner = (sk.getProfileFromUserID(nextOwner)||{})['ownerID']) {
+	while(nextOwner != null && nextOwner['userID'] != null) {
 		//Keep recursively-looped owners from breaking everything.
 		if(out.indexOf(nextOwner) >= 0) break;
 		
 		out.push(nextOwner);
+		if(nextOwner['ownerID'] != null) nextOwner = sk.getProfileFromUserID(nextOwner['ownerID']);
+		else nextOwner = null;
 	}
 	
 	return out;
