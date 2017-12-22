@@ -31,6 +31,9 @@ processToyText = function(message){
     
 	//Check for things that should never happen before we parse it.
 	
+	//Remove zalgo, because of course a tester tried that!
+	message = unzalgo.clean(message);
+	
 	//If there are numbers, let's do some stuff.
 	var numbers = message.match(/\d+/g);
 	
@@ -78,9 +81,6 @@ processToyText = function(message){
 	message = message.replace(/`[^`]+`+?/g, function(match) {
 		return match.substr(1, match.length-2);
 	});
-	
-	//Remove zalgo, because of course a tester tried that!
-	message = unzalgo.clean(message);
 	
     message = message.replace(/([!,.:;~\n])\s*/g, "|$1|").split("|"); //Split into sentences
     logger.info(message);
