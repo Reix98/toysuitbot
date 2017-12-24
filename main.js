@@ -6,9 +6,10 @@ var tagger = require( 'wink-pos-tagger' );
 var myTagger = tagger();
 var tokenize = require( 'wink-tokenizer' )().tokenize;
 const Inflectors = require("en-inflectors").Inflectors;
-let inflectors = new Inflectors("book");
+var inflectors = new Inflectors("book");
 
 sk = require("./SessionKeeper.js");
+ac = require("./AccessControl.js");
 ms = require("./MessageSender.js");
 ch = require("./CommandHandler.js");
 mh = require("./MessageHandler.js");
@@ -25,10 +26,20 @@ var bot = new Discord.Client({
    token: auth.token,
    autorun: true
 });
+var firstboot = true;
 bot.on('ready', function (evt) {
     logger.info('Connected');
     logger.info('Logged in as: ');
     logger.info(bot.username + ' - (' + bot.id + ')');
+
+	if(firstboot) {
+		firstboot = false;
+		sk.init(logger, bot);
+		ac.init(logger, sk);
+		ms.init(logger, bot, sk);
+		mh.init(logger, bot, sk, ms);
+		ch.init(logger, sk, ms, ac, mh, bot);
+	}
 });
 
 var info = "";
@@ -37,10 +48,27 @@ for(var key in bot){
 }
 logger.info("  "+info);
 
-sk.init(logger, false);
-ms.init(logger, bot, sk);
-ch.init(logger, sk, ms);
-mh.init(logger, bot, sk, ms);
+bot.on('presence', function(user, userID, status, game, evt) {
+	//Alert SessionKeeper to presence changes.
+	//If a new user is added to the server, a presence change event will fire.
+	//Between this and the SK's initialization check of the user list, it knows every user.
+	//This way, it will always have a profile for every user.
+	if(!user.bot) sk.noteUser(userID);
+});
+
+bot.on('messageUpdate', function(oldMsg, newMsg) {
+	
+	//Clever toys may edit messages to speak out of turn.
+	//Just delete anything they edit if they're suited.
+	var authorId = newMsg.author.id;
+	var author = sk.getProfileFromUserID(authorId);
+	if(author != null && author['mode'] == 'suited') {
+		bot.deleteMessage({
+			channelID: newMsg.channel_id,
+			messageID: newMsg.id
+		});
+	}
+});
 
 bot.on('message', function (user, userID, channelID, message, evt) {
     //try{

@@ -1,26 +1,105 @@
-var storage = require('node-persist');
+var fs = require('fs');
 
 var logger;
+var discordBot;
 
 //var sessions = {};
-var profiles = {};
-storage.initSync();
+var profileCache = {};
 
 
-init = function(log, forceCacheRefresh){
+var TemplateProfile = null;
+
+function UserProfile(props) {
+	
+	props = props || {};
+	
+	var profile = this;
+	profile['userID'] = null;
+    profile['name'] = null;
+	profile['discriminator'] = null;
+    profile['nickname'] = null;
+    profile['lastChannelID'] = null;
+    profile['str'] = 2; //str;
+    profile['res'] = 2; //res;
+    profile['wil'] = 2; //wil;
+    profile['controlled'] = false;
+    profile['gagged'] = false;
+    profile['mode'] = "unsuited";
+    profile['suit timestamp'] = 0;
+    profile['suit timer'] = 0;
+    profile['suit timer bonus count'] = 0;
+    profile['suit timer bonus amount'] = null;
+    profile['toys'] = [];
+    profile['ownerID'] = null;
+    profile['info'] = "[Info not set]";
+    profile['kinks'] = "[Kinks not set]";
+    profile['toy mode'] = null;
+	profile['beta access list'] = [];
+	profile['can safeword'] = "yes";
+	
+	for(var prop in props) {
+		this[prop] = props[prop];
+	}
+}
+
+UserProfile.prototype.differenceFromTemplate = function(includeID) {
+	var diff = {};
+	for(var prop in TemplateProfile) {
+		if(!includeID && (prop == 'userID' || prop == 'name' || prop == 'discriminator')) continue;
+		if(typeof this[prop] == 'function') continue;
+		if(typeof this[prop] == 'object') {
+			try {
+				if(JSON.stringify(this[prop]) != JSON.stringify(TemplateProfile[prop])) diff[prop] = this[prop];
+			}catch(e){
+				//If it's gonna crash the JSON stringifier, we can't save it anyway, so...
+			}
+		}else if(this[prop] != TemplateProfile[prop]) diff[prop] = this[prop];
+	}
+	
+	return diff;
+}
+
+TemplateProfile = new UserProfile();
+
+init = function(log, bot){
     logger = log;
-    if(storage.getItemSync("creation date") == undefined || forceCacheRefresh){
-        logger.info("No cache found. Creating new cache.");
-        storage.clearSync();
-        storage.setItemSync("creation date", new Date().toDateString());
-        storage.setItemSync("sessions", sessions);
-        storage.setItemSync("profiles", profiles);
-    }else{
-        logger.info("Previous cache loaded.");
-        //profiles = storage.getItemSync("profiles");
-        //logger.info("profiles data: "+profiles);
-    }
-    logger.info("Cache was created: "+(storage.getItemSync("creation date")));
+	discordBot = bot;
+	
+	if(!fs.existsSync('profiles')) {
+		logger.info('No profiles folder exists. Creating one now...');
+		fs.mkdirSync('profiles');
+	}
+	
+	var proFiles = fs.readdirSync('profiles');
+	
+	for(var i = 0, l = proFiles.length; i < l; i++) {
+		var file = proFiles[i];
+		var insensitive = file.toLowerCase();
+		if(!insensitive.startsWith('profile-') || !insensitive.endsWith('.json')) continue;
+		
+		//Remove 'profile-' prefix and '.json' suffix.
+		var profName = file.substr(8);
+		profName = profName.substr(0, profName.length-5);
+		try {
+			var newProf = new UserProfile(JSON.parse(fs.readFileSync('profiles/'+file)));
+			profileCache[profName] = newProf;
+		}catch(e) {
+			logger.error('Couldn\'t load profile "'+file+'" because it is inaccessible or corrupted:',e);
+		}
+	}
+	
+	var users = discordBot.users;
+	
+	for(var key in users) {
+		var user = users[key];
+		if(user.bot) continue;
+		if(!profileCache.hasOwnProperty(user.id)) profileCache[user.id] = new UserProfile();
+		var prof = profileCache[user.id];
+		prof['userID'] = user.id;
+		prof['name'] = user.username;
+		prof['discriminator'] = user.discriminator;
+	}
+	
     //var sessionCount = getSessionCount();
     //var toyList = getToyList();
     //logger.info("There are currently "+sessionCount+" sessions in storage:");
@@ -171,75 +250,107 @@ updateSession = function(session){
 
 /* --- */
 
+noteUser = function(userID) {
+	//This is triggered by main.js when a user's presence status changes.
+	//We can use this to ensure that every user that enters the server is known to our profiles.
+	//If this user doesn't have a profile, make one.
+	if(!profileCache.hasOwnProperty(userID)) createProfileFromUserID(userID);
+}
+
+writeProfileToDisk = function(userID) {
+	var profile = profileCache[userID];
+	var differences = (profile||TemplateProfile).differenceFromTemplate(false);
+	var diffKeys = Object.keys(differences);
+	if(diffKeys.length < 1 || (diffKeys.length == 1 && diffKeys[0] == 'lastChannelID')) {
+		try{
+			fs.unlinkSync('profiles/profile-'+userID+'.json');
+		}catch(e){}
+	}else {
+		fs.writeFileSync('profiles/profile-'+userID+'.json', JSON.stringify(differences));
+	}
+}
+
 getProfileFromUserID = function(userID){
     //logger.info("getProfileFromUserID("+userID+")");
-    var profiles = storage.getItemSync("profiles");
-    //logger.info("profiles: "+profiles.length);
-    for(var key in profiles){
-        var profile = profiles[key];
-        //logger.info("Comparing '"+profile['userID']+"' and '"+userID+"'.");
-        if(profile['userID'] == userID){
-            //logger.info("getProfileFromUserID("+userID+"):\n"+profile);
-            return profile;
-        }
-    }
-    return undefined;
+    var profile = profileCache[userID];
+    
+	if(profile) return profile;
+	
+    //There is no user profile.
+	//Create one.
+	return createProfileFromUserID(userID);
 }
 
 getProfileFromUserName = function(username){
-    //logger.info("getProfileFromUserName("+username+")");
-    var profiles = storage.getItemSync("profiles");
-    //logger.info("profiles: "+profiles.length);
-    for(var key in profiles){
-        var profile = profiles[key];
+    for(var key in profileCache){
+        var profile = profileCache[key];
         //logger.info("Comparing '"+profile['name']+"' and '"+username+"'.");
-        if(profile['name'] == username){
+        if(username && ((profile['name']||'').toLowerCase().trim() == username.toLowerCase().trim() || ('<@'+key+'>' == username))){
             //logger.info("getProfileFromUserName("+username+"):\n"+profile);
             return profile;
         }
     }
-    return undefined;
+    return createProfileFromUsername(username);
 }
 
-createProfile = function(userID, name, str, res, wil){
-    //logger.info("createProfile("+userID+", "+name+", "+str+", "+res+", "+wil+")");
-    var profiles = storage.getItemSync("profiles");
-    var profile = {};
+createProfileFromUserID = function(userID){
+	
+	var users = discordBot.users;
+	
+	if(!users.hasOwnProperty(userID)) {
+		logger.error('User ID "'+userID+'" does not exist, but was passed to createProfileFromUserID?');
+		console.trace("DEBUG: Stack trace for bad createProfileFromUserID call:");
+		return null;
+	}
+	
+	var user = users[userID];
+	var name = user.username;
+	
+    var profile = new UserProfile();
     profile['userID'] = userID;
     profile['name'] = name;
-    profile['nickname'] = undefined;
-    profile['lastChannelID'] = undefined;
-    profile['str'] = str;
-    profile['res'] = res;
-    profile['wil'] = wil;
-    profile['controlled'] = false;
-    profile['gagged'] = false;
-    profile['mode'] = "unsuited";
-    profile['suit timestamp'] = 0;
-    profile['suit timer'] = 0;
-    profile['suit timer bonus count'] = 0;
-    profile['suit timer bonus amount'] = undefined;
-    profile['toys'] = [];
-    profile['ownerID'] = null;
-    profile['info'] = "[Info not set]";
-    profile['kinks'] = "[Kinks not set]";
-    profile['toy mode'] = undefined;
-    //logger.info(profiles[userID]);
-    profiles[userID] = profile;
-    //logger.info(profiles[userID]);
-    storage.setItemSync("profiles", profiles);
-    profiles = storage.getItemSync("profiles");
-    //logger.info(profiles[userID]);
+	profile['discriminator'] = user.discriminator;
+	profileCache[userID] = profile;
+	writeProfileToDisk(userID);
     return profile;
 }
 
+createProfileFromUsername = function(username) {
+	var users = discordBot.users;
+	
+	for(var i = 0, l = users.length; i < l; i++) {
+		var user = users[i];
+		if(username && (user.username.toLowerCase().trim() == username.toLowerCase().trim() || ('<@'+user.id+'>' == username))) {
+			return createProfileFromUserID(user.id);
+		}
+	}
+	
+	return null; //Couldn't find that username.
+}
+
+deleteProfile = function(profileOrUserID) {
+	
+	var uid;
+	
+	if(typeof profileOrUserID === 'object' && profileOrUserID && profileOrUserID.userID) uid = profileOrUserID.userID;
+	else uid = profileOrUserID;
+	
+	delete profileCache[uid];
+	
+	try{
+		fs.unlinkSync('profiles/profile-'+uid+'.json');
+	}catch(e){}
+	
+	createProfileFromUserID(uid);
+}
+
 getName = function(profile){
-    if(profile['nickname'] == undefined) return profile['name'];
+    if(!profile['nickname'] || profile['mode'] != 'suited') return profile['name'];
     else return profile['nickname'];
 }
 
 getOwner = function(profile){
-    if(profile['ownerID'] == undefined) return undefined;
+    if(!profile['ownerID']) return null;
     return getProfileFromUserID(profile['ownerID']);
 }
 
@@ -249,7 +360,8 @@ getToyType = function(profile){
 
 getNextLowestToyType = function(type){
     switch(type){
-        case(undefined): return "alpha";
+		case("dom"): return "alpha";
+        case(null): return "alpha";
         case("alpha"): return "beta";
         case("beta"): return "omega";
         case("omega"): throw "Omega toys cannot do that";
@@ -259,7 +371,7 @@ getNextLowestToyType = function(type){
 
 getRemainingTimerSeconds = function(profile){
     logger.info("getRemainingTimerSeconds("+profile+")");
-    if(profile['suit timestamp'] == undefined) return 0;
+    if(!profile['suit timestamp']) return 0;
     var now = (Date.now()/1000);
     var endTimestamp = profile['suit timestamp'] + profile['suit timer'];
     //endTimestamp += profile['suit timer bonus count'] * profile['suit timer bonus amount'];
@@ -268,26 +380,40 @@ getRemainingTimerSeconds = function(profile){
 }
 
 updateProfile = function(profile){
-    //logger.info("updateProfile("+profile+")");
-    var profiles = storage.getItemSync("profiles");
-    for(var key in profiles){
-        var testProfile = profiles[key];
-        if(testProfile['userID'] == profile['userID']){
-            profiles[key] = profile;
-        }
-    }
-    storage.setItemSync("profiles", profiles);
+    var prof = profileCache[profile.userID];
+	for(var key in profile) {
+		if(typeof prof[key] == 'function') continue;
+		prof[key] = profile[key];
+	}
+	writeProfileToDisk(prof.userID);
 }
 
 getUserIDFromUserName = function(username){
     //logger.info("getUserIDFromUserName("+username+")");
-    var profiles = storage.getItemSync("profiles");
-    for(var key in profiles){
-        var profile = profiles[key];
+    for(var key in profileCache){
+        var profile = profileCache[key];
         //logger.info("Comparing '"+profile['name']+"' and '"+username+"'.");
-        if(profile['name'] == username) return userID;
+        if(username && (profile['name'].toLowerCase().trim() == username.toLowerCase().trim() || ('<@'+key+'>' == username))) return userID;
+    }	
+    return null;
+}
+
+readableTime = function(time){
+    var timeText = "";
+    var minutes = 0;
+    var seconds = 0;
+    if(time >= 60){
+        minutes = Math.floor(time/60);
+        time -= 60*minutes;
     }
-    return undefined;
+    seconds = Math.floor(time);
+
+    if(minutes < 10) timeText += "0";
+    timeText += minutes+":";
+    if(seconds < 10) timeText += "0";
+    timeText += seconds;
+
+    return timeText;
 }
 
 module.exports = {
@@ -304,14 +430,17 @@ module.exports = {
     getSessionFromToyID: getSessionFromToyID,
     getToyNameFromToyID: getToyNameFromToyID,
     getSessionVerbosity: getSessionVerbosity,*/
+	noteUser: noteUser,
     getProfileFromUserID: getProfileFromUserID,
     getProfileFromUserName: getProfileFromUserName,
-    createProfile: createProfile,
+    createProfileFromUserID: createProfileFromUserID,
     updateProfile: updateProfile,
+	deleteProfile: deleteProfile,
     getRemainingTimerSeconds: getRemainingTimerSeconds,
     getName: getName,
     getOwner: getOwner,
     getToyType: getToyType,
-    getNextLowestToyType: getNextLowestToyType
+    getNextLowestToyType: getNextLowestToyType,
+	readableTime: readableTime
 }
 

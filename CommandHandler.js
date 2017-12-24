@@ -1,14 +1,20 @@
 var logger;
 var sessionKeeper;
 var messageSender;
+var accessControl;
+var messageHandler;
+var discordBot;
 
 var pendingCommands = [];
 var commandTimeout = 60*3;
 
-init = function(log, sk, ms){
+init = function(log, sk, ms, ac, mh, bot){
     logger = log;
     sessionKeeper = sk;
     messageSender = ms;
+	accessControl = ac;
+	messageHandler = mh;
+	discordBot = bot;
 }
 
 setPendingCommand = function(userID, cmd, args){
@@ -59,16 +65,18 @@ handleCommand = function(user, userID, channelID, message, evt){
         message: message, 
         evt: evt
     };
+	var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
     try{
-        if(cmd != '!ping' && cmd !='!register'){
-            var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
-            if(userProfile == undefined) throw "You must be registered to use commands."
+        if(cmd != '!ping' /*&& cmd !='!register'*/){
+            if(userProfile == null) throw "User profile missing. This should not be possible..."
         }
         switch(cmd) {
             case('!ping'): ping(profile, args, context); break;
-            case('!register'): register(profile, args, context); break;
+            //case('!register'): register(profile, args, context); break;
             case('!toysuit'): toysuit(profile, args, context); break;
             case('!release'): release(profile, args, context); break;
+            case('!free'): free(profile, args, context); break;
+            case('!safeword'): safeword(profile, args, context); break;
             case('!info'): info(profile, args, context); break;
             case('!set_info'): setInfo(profile, args, context); break;
             case('!kinks'): kinks(profile, args, context); break;
@@ -76,6 +84,7 @@ handleCommand = function(user, userID, channelID, message, evt){
             case('!set_nickname'): setNickname(profile, args, context); break;
             case('!set_timer'): setTimer(profile, args, context); break;
             case('!timer'): timer(profile, args, context); break;
+			case('!clear_timer'): clearTimer(profile, args, context); break;
             case('!set_toy_type'): setToyType(profile, args, context); break;
             case('!toy_type'): toyType(profile, args, context); break;
             case('!set_timer_bonus'): setTimerBonus(profile, args, context); break;
@@ -84,21 +93,33 @@ handleCommand = function(user, userID, channelID, message, evt){
             case('!gag'): gag(profile, args, context); break;
             case('!say'): say(profile, args, context); break;
             case('!voice'): voice(profile, args, context); break;
+			//It's not a valid command.
+			//Remove the '!' prefix and send it back into the parser.
+			default: messageHandler.handleMessage(user, userID, channelID, message.substr(1), evt); return;
         }
     }catch(e){
         if((e+"").indexOf("[silent]") == -1){
-            messageSender.sendMessage(context.channelID, 'Error: "'+e+'".');
+            messageSender.sendMessage(context.channelID, 'Error: "'+e+'"');
         }
         logger.info("!!!"+e);
         logger.info(e.stack);
     }
+	
+	//If the sender is suited, delete the command message.
+	//Otherwise, they could do something like "!gag HELP ME", and it would display...
+	if(userProfile != null && userProfile['mode'] == 'suited') {
+		discordBot.deleteMessage({
+			channelID: context.evt.d.channel_id,
+			messageID: context.evt.d.id
+		});
+	}
 }
 
 ping = function(profile, args, context){
     messageSender.sendMessage(context.channelID, 'Pong! ('+args+')');
 }
 
-register = function(profile, args, context){
+/*register = function(profile, args, context){
     var profile = sessionKeeper.getProfileFromUserID(context.userID);
     if(profile == undefined){
         var str = 2;
@@ -120,7 +141,7 @@ register = function(profile, args, context){
     }else{
         messageSender.sendMessage(context.channelID, 'You are already registered.');
     }
-}
+}*/
 
 requirePM = function(context){
     return true;
@@ -137,38 +158,37 @@ requirePM = function(context){
 }
 
 noOmegas = function(profile){
-    if(profile['mode'] == "suited" && profile['toy mode'] == "omega") throw "Omega toys can't do that";
+    if(profile['mode'] == "suited" && profile['toy mode'] == "omega") throw "Omega toys can't do that.";
 }
 
 toysuit = function(profile, args, context){
-    var toyProfile = sessionKeeper.getProfileFromUserName(args[0], context.channelID);
     var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
-    noOmegas(userProfile);
-    if(toyProfile == undefined) throw "Target is not registered"
-    if(toyProfile['ownerID'] == undefined){
-        toyProfile['ownerID'] = userProfile['userID'];
-        toyProfile['mode'] = "suited";
-        toyProfile['toy mode'] = getNextLowestToyType(getToyType(userProfile));
-        toyProfile['suit timer bonus amount'] = undefined;
-        toyProfile['suit timer bonus count'] = 0;
-        toyProfile['suit timer'] = 0;
-        toyProfile['suit timestamp'] = 0;
-        toyProfile['controlled'] = false;
-        toyProfile['gagged'] = false;
-        sessionKeeper.updateProfile(toyProfile);
-        messageSender.sendMessage(context.channelID, getName(toyProfile)+' has been toysuited by '+getName(userProfile)+'.');
-    }else{
-        throw "Target is already toysuited"
-    }
+	var toyProfile;
+	if(args.length > 0) toyProfile = sessionKeeper.getProfileFromUserName(args[0], context.channelID);
+	else toyProfile = sessionKeeper.getProfileFromUserID(context.userID);
+    if(toyProfile == null) throw "That user doesn't exist."
+    
+	var result = accessControl.attemptToysuit(userProfile, toyProfile);
+    messageSender.sendMessage(context.channelID, result);
 }
 
 release = function(profile, args, context){
-    var toyProfile = sessionKeeper.getProfileFromUserName(args[0], context.channelID);
+    
     var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
-    if(toyProfile == undefined) throw "Target is not registered"
-    if(toyProfile['mode'] == "unsuited"){
+	var toyProfile;
+	if(args.length > 0) toyProfile = sessionKeeper.getProfileFromUserName(args[0], context.channelID);
+	else toyProfile = sessionKeeper.getProfileFromUserID(context.userID);
+    if(toyProfile == null) throw "That user doesn't exist."
+	
+	var result = accessControl.canRelease(userProfile, toyProfile);
+	
+    messageSender.sendMessage(context.channelID, result);
+	toyProfile['mode'] = 'unsuited';
+	sessionKeeper.updateProfile(toyProfile);
+	
+    /*if(toyProfile['mode'] == "unsuited"){
         toyProfile['mode'] = "unsuited";
-        toyProfile['ownerID'] = undefined;
+        toyProfile['ownerID'] = null;
         sessionKeeper.updateProfile(toyProfile);
         throw "Target is not toysuited";
     }else if(toyProfile['userID'] == userProfile['userID']){
@@ -176,20 +196,20 @@ release = function(profile, args, context){
         if(sessionKeeper.getRemainingTimerSeconds(toyProfile)>0){
             //Timer's not up.
             var time = readableTime(sessionKeeper.getRemainingTimerSeconds(toyProfile));
-            messageSender.sendAction(context.channelID, getName(toyProfile)+" attempts to release itself, but it's timer still reads '"+time+"'.");
+            messageSender.sendAction(context.channelID, getName(toyProfile)+" attempts to release itself, but its timer still reads '"+time+"'.");
         }else{
             //Timer's up. Check suit settings.
             //Whatever. Just do it for now.
             toyProfile['mode'] = "unsuited";
-            toyProfile['ownerID'] = undefined;
+            toyProfile['ownerID'] = null;
             sessionKeeper.updateProfile(toyProfile);
             messageSender.sendMessage(context.channelID, getName(userProfile)+' released '+getName(toyProfile)+'.');
         }
-    }else if(toyProfile['owner'] == undefined){
+    }else if(toyProfile['owner'] == null){
         //No owner. Check suit settings.
         //Whatever. Just do it for now.
         toyProfile['mode'] = "unsuited";
-        toyProfile['ownerID'] = undefined;
+        toyProfile['ownerID'] = null;
         sessionKeeper.updateProfile(toyProfile);
         messageSender.sendMessage(context.channelID, getName(userProfile)+' released '+getName(toyProfile)+'.');
     }else if(toyProfile['ownerID'] != userProfile['userID']){
@@ -197,10 +217,31 @@ release = function(profile, args, context){
         throw "You are not the toy's owner";
     }else{
         toyProfile['mode'] = "unsuited";
-        toyProfile['ownerID'] = undefined;
+        toyProfile['ownerID'] = null;
         sessionKeeper.updateProfile(toyProfile);
         messageSender.sendMessage(context.channelID, getName(userProfile)+' released '+getName(toyProfile)+'.');
-    }
+    }*/
+}
+
+free = function(profile, args, context){
+    var toyProfile = sessionKeeper.getProfileFromUserName(args[0], context.channelID);
+    var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
+    if(toyProfile == null) throw "That user doesn't exist."
+	
+	var result = accessControl.canFree(userProfile, toyProfile);
+	
+    messageSender.sendMessage(context.channelID, result);
+	sessionKeeper.deleteProfile(toyProfile);
+}
+
+safeword = function(profile, args, context){
+    var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
+    if(userProfile == null) throw "That user doesn't exist."
+	
+	var result = accessControl.canSafeword(userProfile);
+	
+    messageSender.sendMessage(context.channelID, result);
+	sessionKeeper.deleteProfile(userProfile);
 }
 
 info = function(profile, args, context){
@@ -212,12 +253,12 @@ info = function(profile, args, context){
     }else if(args.length == 1){
         userProfile = sessionKeeper.getProfileFromUserName(args[0]);
     }
-    if(userProfile == undefined) throw "That user isn't registered"
+    if(userProfile == null) throw "That user doesn't exist."
 
     var info = "";
     if(userProfile['mode'] == "suited"){
         info += getName(userProfile)+" is a toy. ";
-        if(userProfile['ownerID'] == undefined) info += "They have no owner.";
+        if(userProfile['ownerID'] == null) info += "They have no owner.";
         else info += "They are owned by " + getOwner(userProfile)['name'];
     }
     info += "\nInfo: "+userProfile['info'];
@@ -234,7 +275,7 @@ setInfo = function(profile, args, context){
         info = args[0];
     }else if(args.length == 2){
         targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
-        if(targetProfile == undefined) throw "Target not registered";
+        if(targetProfile == null) throw "That user doesn't exist.";
         if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
         info = args[1];
     }
@@ -251,7 +292,7 @@ kinks = function(profile, args, context){
     }else if(args.length == 1){
         userProfile = sessionKeeper.getProfileFromUserName(args[0]);
     }
-    if(userProfile == undefined) throw "That user isn't registered"
+    if(userProfile == null) throw "That user doesn't exist."
 
     var kinks = userProfile['kinks'];
     messageSender.sendMessage(context.userID, userProfile['name']+"'s kinks: \n"+kinks);
@@ -267,7 +308,7 @@ setKinks = function(profile, args, context){
         kinks = args[0];
     }else if(args.length == 2){
         targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
-        if(targetProfile == undefined) throw "Target not registered";
+        if(targetProfile == null) throw "That user doesn't exist";
         if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
         kinks = args[1];
     }
@@ -277,7 +318,7 @@ setKinks = function(profile, args, context){
 
 setNickname = function(profile, args, context){
     var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
-    noOmegas(targetProfile);
+    noOmegas(userProfile);
     requirePM(context);
     if(args.length == 0 || args.length > 2) throw "Wrong number of arguments";
     var targetProfile;
@@ -287,10 +328,10 @@ setNickname = function(profile, args, context){
         nickname = args[0];
     }else if(args.length == 2){
         targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
-        if(targetProfile == undefined) throw "Target not registered";
+        if(targetProfile == null) throw "That user doesn't exist.";
         if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
         nickname = args[1];
-        if(nickname == "[reset]") nickname = undefined;
+        if(nickname == "[reset]") nickname = null;
     }
     targetProfile['nickname'] = nickname;
     sessionKeeper.updateProfile(targetProfile);
@@ -306,7 +347,7 @@ setTimer = function(profile, args, context){
         time = args[0];
     }else if(args.length == 2){
         targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
-        if(targetProfile == undefined) throw "Target not registered";
+        if(targetProfile == null) throw "That user doesn't exist.";
         if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
         time = args[1];
     }
@@ -341,7 +382,7 @@ timer = function(profile, args, context){
         if(targetProfile['mode'] == "unsuited") throw "Target not toysuited"
     }else if(args.length == 1){
         targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
-        if(targetProfile == undefined) throw "Target not registered";
+        if(targetProfile == null) throw "That user doesn't exist.";
         if(targetProfile['mode'] == "unsuited") throw "Target not toysuited"
     }
     time = sessionKeeper.getRemainingTimerSeconds(targetProfile);
@@ -350,8 +391,31 @@ timer = function(profile, args, context){
         time = 0;
     }
 
-    messageSender.sendAction(context.channelID, getName(targetProfile)+"'s timer reads: \n"+readableTime(time));
+    messageSender.sendAction(context.channelID, getName(targetProfile)+"'s timer reads: \n"+sessionKeeper.readableTime(time));
 }
+
+clearTimer = function(profile, args, context) {
+	requirePM(context);
+    if(args.length > 1) throw "Wrong number of arguments";
+	var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
+    var targetProfile;
+    if(args.length == 0){
+        targetProfile = sessionKeeper.getProfileFromUserID(context.userID);
+    }else if(args.length == 1){
+        targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
+        if(targetProfile == null) throw "That user doesn't exist.";
+    }
+	
+	var result = accessControl.canClearTimer(userProfile, targetProfile);
+	
+	targetProfile['suit timer bonus amount'] = null;
+	targetProfile['suit timer bonus count'] = 0;
+	targetProfile['suit timer'] = 0;
+	targetProfile['suit timestamp'] = 0;
+	sessionKeeper.updateProfile(targetProfile);
+	
+	messageSender.sendAction(context.channelID, result);
+};
 
 setToyType = function(profile, args, context){
     requirePM(context);
@@ -362,30 +426,35 @@ setToyType = function(profile, args, context){
     if(args.length == 2){
         targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
         userProfile = sessionKeeper.getProfileFromUserID(context.userID);
-        if(targetProfile == undefined) throw "Target not registered";
+        if(targetProfile == null) throw "That user doesn't exist.";
         if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
-        if(userProfile['mode'] == "suited" && userProfile['toy mode'] == undefined) throw "Toys without a set type cannot set other toys' types"
+        if(userProfile['mode'] == "suited" && userProfile['toy mode'] == null) throw "Toys without a set type cannot set other toys' types"
         type = args[1];
     }
     if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
-    if(targetProfile['toy mode'] != undefined && sessionKeeper.getRemainingTimerSeconds(targetProfile) > 0) throw "Cannot change toy type once timer is set"
+    if(targetProfile['toy mode'] != null && sessionKeeper.getRemainingTimerSeconds(targetProfile) > 0) throw "Cannot change toy type once timer is set"
 
     type = type.toLowerCase();
     switch(type){
         case("alpha"):
             if(userProfile['mode'] == "suited") throw "Toys cannot create alpha toys"
             targetProfile['toy mode'] = "alpha";
+			messageSender.sendAction(context.channelID, sessionKeeper.getName(targetProfile)+" is now an alpha (α) toy!");
             break;
         case("beta"):
             if(userProfile['mode'] == "suited" && userProfile['toy mode'] != "alpha") throw "Non-alpha toys cannot create beta toys"
-            targetProfile['toy mode'] = "beta"; break;
+            targetProfile['toy mode'] = "beta";
+			messageSender.sendAction(context.channelID, sessionKeeper.getName(targetProfile)+" is now a beta (β) toy!");
             break;
         case("omega"):
             if(userProfile['mode'] == "suited" && userProfile['toy mode'] == "omega") throw "Omega toys cannot create toys"
-            targetProfile['toy mode'] = "omega"; break;
+            targetProfile['toy mode'] = "omega";
+			messageSender.sendAction(context.channelID, sessionKeeper.getName(targetProfile)+" is now an omega (ω) toy!");
             break;
     }
+
     sessionKeeper.updateProfile(targetProfile);
+	
 }
 
 toyType = function(profile, args, context){
@@ -398,30 +467,31 @@ toyType = function(profile, args, context){
         if(targetProfile['mode'] == "unsuited") throw "Target not toysuited"
     }else if(args.length == 1){
         targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
-        if(targetProfile == undefined) throw "Target not registered";
+        if(targetProfile == null) throw "That user doesn't exist.";
         if(targetProfile['mode'] == "unsuited") throw "Target not toysuited"
     }
     type = targetProfile['toy mode'];
-    if(type == undefined) throw "Toy type not set"
+    if(type == null) throw "Toy type not set"
 
     var typeText = "";
     switch(type){
-        case("alpha"): typeText = "an α"; break;
-        case("beta"): typeText = "a β"; break;
-        case("omega"): typeText = "an ω"; break;
+		case("dom"): typeText = "a dominant"; break;
+        case("alpha"): typeText = "an alpha (α) toy"; break;
+        case("beta"): typeText = "a beta (β) toy"; break;
+        case("omega"): typeText = "an omega (ω) toy"; break;
     }
 
-    messageSender.sendAction(context.channelID, getName(targetProfile)+" is "+typeText+" toy.");
+    messageSender.sendAction(context.channelID, getName(targetProfile)+" is "+typeText+".");
 }
 
 setTimerBonus = function(profile, args, context){
     requirePM(context);
     if(args.length != 2) throw "Wrong number of arguments";
     var targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
-    if(targetProfile == undefined) throw "Target not registered";
+    if(targetProfile == null) throw "That user doesn't exist.";
     if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
     if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
-    if(targetProfile['suit timer bonus amount'] != undefined) throw "Suit timer bonus already set"
+    if(targetProfile['suit timer bonus amount'] != null) throw "Suit timer bonus already set"
 
     var time = args[1];
     time = time.split(':');
@@ -437,14 +507,14 @@ setTimerBonus = function(profile, args, context){
     timeAmt = Math.min(60*5, timeAmt);
     targetProfile['suit timer bonus amount'] = timeAmt;
     sessionKeeper.updateProfile(targetProfile);
-    messageSender.sendAction(context.channelID, getName(targetProfile)+"'s timer bonus was set to "+readableTime(timeAmt));
+    messageSender.sendAction(context.channelID, getName(targetProfile)+"'s timer bonus was set to "+sessionKeeper.readableTime(timeAmt));
 }
 
 triggerBonus = function(profile, args, context){
     requirePM(context);
     if(args.length != 1) throw "Wrong number of arguments";
     var targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
-    if(targetProfile == undefined) throw "Target not registered";
+    if(targetProfile == null) throw "That user doesn't exist.";
     if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
     if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
 
@@ -452,14 +522,14 @@ triggerBonus = function(profile, args, context){
     targetProfile['suit timer bonus count']++;
     targetProfile['suit timer'] += targetProfile['suit timer bonus amount'];
     sessionKeeper.updateProfile(targetProfile);
-    messageSender.sendAction(context.channelID, getName(targetProfile)+"'s timer bonus was triggered, adding "+readableTime(bonusAmount)+" to their timer.");
+    messageSender.sendAction(context.channelID, getName(targetProfile)+"'s timer bonus was triggered, adding "+sessionKeeper.readableTime(bonusAmount)+" to their timer.");
 }
 
 control = function(profile, args, context){
     requirePM(context);
     if(args.length != 1) throw "Wrong number of arguments";
     var targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
-    if(targetProfile == undefined) throw "Target not registered";
+    if(targetProfile == null) throw "That user doesn't exist.";
     if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
     if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
 
@@ -480,7 +550,7 @@ gag = function(profile, args, context){
     requirePM(context);
     if(args.length != 1) throw "Wrong number of arguments";
     var targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
-    if(targetProfile == undefined) throw "Target not registered";
+    if(targetProfile == null) throw "That user doesn't exist.";
     if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
     if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
 
@@ -489,9 +559,9 @@ gag = function(profile, args, context){
 
     sessionKeeper.updateProfile(targetProfile);
     if(targetProfile['gagged']){
-        messageSender.sendAction(context.channelID, getName(targetProfile)+"'s gag swells, leaving their mouth usable only as a hole to fuck.");
+        messageSender.sendAction(context.channelID, getName(targetProfile)+"'s gag swells, leaving its mouth usable only as a hole to fuck.");
     }else{
-        messageSender.sendAction(context.channelID, getName(targetProfile)+"'s gag deflates, allowing them to talk again.");
+        messageSender.sendAction(context.channelID, getName(targetProfile)+"'s gag deflates, allowing it to talk again.");
     }
 }
 
@@ -500,7 +570,7 @@ say = function(profile, args, context){
     if(args.length != 2) throw "Wrong number of arguments";
     var targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
     var message = args[1];
-    if(targetProfile == undefined) throw "Target not registered";
+    if(targetProfile == null) throw "That user doesn't exist.";
     if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
     if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
     
@@ -512,29 +582,11 @@ voice = function(profile, args, context){
     if(args.length != 2) throw "Wrong number of arguments";
     var targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
     var message = args[1];
-    if(targetProfile == undefined) throw "Target not registered";
+    if(targetProfile == null) throw "That user doesn't exist.";
     if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
     if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
     
     messageSender.sendMessage(targetProfile['userID'], "**Toysuit**: " + "*"+message+"*");
-}
-
-readableTime = function(time){
-    var timeText = "";
-    var minutes = 0;
-    var seconds = 0;
-    if(time >= 60){
-        minutes = Math.floor(time/60);
-        time -= 60*minutes;
-    }
-    seconds = Math.floor(time);
-
-    if(minutes < 10) timeText += "0";
-    timeText += minutes+":";
-    if(seconds < 10) timeText += "0";
-    timeText += seconds;
-
-    return timeText;
 }
 
 limit = function(val, min, max){
