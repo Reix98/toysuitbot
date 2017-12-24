@@ -3,3 +3,9 @@ node_modules/
 .node-persist/
 logs
 *.log
+<<<<<<< HEAD
+profiles/
+=======
+profiles/
+package-lock.json
+>>>>>>> c4530239119a53f14d004ebd8d265056ab985560
