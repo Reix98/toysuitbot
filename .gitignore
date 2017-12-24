@@ -4,7 +4,12 @@ node_modules/
 logs
 *.log
 <<<<<<< HEAD
+<<<<<<< HEAD
 profiles/
+=======
+profiles/
+package-lock.json
+>>>>>>> c4530239119a53f14d004ebd8d265056ab985560
 =======
 profiles/
 package-lock.json
