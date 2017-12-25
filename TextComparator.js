@@ -9,7 +9,14 @@ var inflectors = new Inflectors("book");
 
 var fs = require('fs');
 var goodToyText;
+var goodToyTextSpaceless;
 var badToyText;
+var badToyTextSpaceless;
+
+String.prototype.replaceAll = function(search, replacement) {
+    var target = this;
+    return target.split(search).join(replacement);
+};
 
 init = function(log, sk){
     logger = log;
@@ -17,18 +24,26 @@ init = function(log, sk){
     
     fs.readFile("goodtoy.txt", 'utf8', function(err, data) {
         if (err) throw err;
+        data2 = data.replaceAll(" ", "");
         goodToyText = data.split("\n");
+        goodToyTextSpaceless = data2.split("\n");
     });
 
     fs.readFile("badtoy.txt", 'utf8', function(err, data) {
         if (err) throw err;
+        data2 = data.replaceAll(" ", "");
         badToyText = data.split("\n");
+        badToyTextSpaceless = data2.split("\n");
     });
 }
 
 processToyText = function(message){
     
-	//Check for things that should never happen before we parse it.
+    //Check for things that should never happen before we parse it.
+    
+    if(message.length > 2000){
+        return insertRandomToyText();
+    }
 	
 	//Remove all non-ASCII text. Only English is supported, and pretty much anything else is probably trying to cheat.
 	for(var i = message.length-1; i >= 0; i--) {
@@ -43,38 +58,6 @@ processToyText = function(message){
 	
 	message = message.trim();
 	if(message == "") return "";
-	
-	//If there are numbers, let's do some stuff.
-	var numbers = message.match(/\d+/g);
-	
-	if(numbers != null) {
-	
-		//If there are only a few numbers, poor toy can't count...
-		if(numbers.length < 6) {
-			var foundTooLargeNumber = false;
-			message = message.replace(/\d+/g, function(match){
-				var num = parseInt(match);
-				if(isNaN(num)) return match;
-				if(!Number.isSafeInteger(num)) {
-					//The message will be deleted for this. They're up to something.
-					foundTooLargeNumber = true;
-					return "";
-				}
-				//The toy can be wrong by up to about 1/3 or so...
-				//(Multiply by 2/3 because we'll center this around the number they posted, so the error can be positive or negative.)
-				var maxError = num*(2/3);
-				//By a different amount each time, of course!
-				var wrongFactor = maxError*Math.random();
-				var wrongNum = Math.round(num - (maxError/2) + wrongFactor);
-				return wrongNum.toString();
-			});
-			if(foundTooLargeNumber) return insertRandomToyText();
-		}else {
-			//But if there are lots of numbers, they're probably up to something.
-			return insertRandomToyText();
-		}
-	
-	}
 	
 	//So, how many actual sequences longer than 2 letters are there?
 	var bigWords = (message.match(/([A-Za-z\d]{3,})/g)||[]).length;
@@ -93,39 +76,135 @@ processToyText = function(message){
 	});
 	
     message = message.replace(/([!,.:;~\n])\s*/g, "|$1|").split("|"); //Split into sentences
-    logger.info(message);
+    //logger.info(message);
     for(var i=0; i<message.length; i++){
-        if(message[i].length>1){
-            var text = message[i];
-            var rating = rateToyText(text);
-
-            /*if(rating > 0.25){
-                //It's good as is, leave it.
-                //return text;
-            }else */
-			if(rating > -0.1){
-                //Could use some work
-                text = text.toLowerCase();
-                text = fixContractions(text);
-                text = replacePhrases(text);
-                text = alterMessage(text);
-                logger.info(text);
-                //return text;
-            }else{
-                //Needs heavy editing.
-                //text = alterMessage(text);
-                text = text.toLowerCase();
-                text = fixContractions(text);
-                text = insertRandomToyText(text);
-                logger.info(text);
-                //return text;
-            }
-            message[i] = text;
-        }else{
-            message[i] += " ";
-        }
+        message[i] = processToyTextSection(message[i]);
     }
     return message.join("");
+}
+
+processToyTextSection = function(text){
+    //logger.info("processToyTextSection('"+text+"')");
+    
+    if(text.length > 240){ //If the text is longer than 120 characters (About 20 words)
+        var divisionPoint = Math.floor(Math.random()*text.length);
+        var neighborhoodStart = Math.max(0, divisionPoint-5);
+        var neighborhoodEnd = Math.min(divisionPoint+5, text.length);
+        var neighborhood = text.substring(neighborhoodStart, neighborhoodEnd);
+        var nearbySpace = neighborhood.indexOf(' ');
+        if(nearbySpace > -1){
+            divisionPoint = neighborhoodStart + nearbySpace;
+        }
+        var text1 = text.substring(0, divisionPoint);
+        var text2 = text.substring(divisionPoint);
+        var betweenText = "";
+        if(text1.substring(text1.length-1) == " ") betweenText += " ";
+        if(text2.substring(0, 1) == " ") betweenText += " ";
+        text1 = processToyTextSection(text1).trim();
+        text2 = processToyTextSection(text2).trim();
+        return (text1 + betweenText + text2).trim();
+    }
+
+    message = text.split(' ');
+
+    var tests = 0;
+    var maxTests = 10;
+
+    var worstRating = 1;
+    var badRatingThreshold = -0.2;
+    var badRatingThresholdDrift = (badRatingThreshold-0.2)/maxTests;
+    var worstRatingIndex = 0;
+    var worstRatingWindowSize = 3;
+    var maxWindowSize = 5;
+
+    do{
+        worstRating = 1;
+        for(var windowSize = 1; windowSize < maxWindowSize; windowSize++){
+            for(var i = 0; i < message.length - windowSize + 1; i++){
+                text = message.slice(i, i+windowSize).join(' ').trim();
+                var rating = rateToyText(text);
+                //logger.info("'"+text+"': "+rating);
+                if(rating < worstRating){
+                    worstRating = rating;
+                    worstRatingIndex = i;
+                    worstRatingWindowSize = windowSize;
+                }
+            }
+        }
+        //logger.info(" --- ");
+        if(worstRating < badRatingThreshold){
+            //logger.info(worstRating + " : '" + message.slice(worstRatingIndex, worstRatingIndex+worstRatingWindowSize) + "'");
+            text = message.slice(0, worstRatingIndex).join(' ').trim() + " " 
+            + processToyTextFragment(message.slice(worstRatingIndex, worstRatingIndex+worstRatingWindowSize).join(' ').trim())
+            + " " + message.slice(worstRatingIndex+worstRatingWindowSize).join(' ').trim();
+            message = text.split(' ');
+        }
+    }while(worstRating < badRatingThreshold-badRatingThresholdDrift && tests++ < maxTests)
+    //return fixAsterisks(message.join(' ').trim());
+    return message.join(' ').trim();
+}
+
+fixAsterisks = function(text){
+    var state = 0;
+    for(var i=0; i<text.length; i++){
+        switch(state){
+            case(0): //Neutral state
+                if(text.charAt(i) == '*') state = 1;
+            break;
+            case(1): //Just found an asterisk
+                if(text.charAt(i) == ' '){
+                    i--;
+                    text = text.substring(0, i) + text.substring(i+1);
+                }else if(text.charAt(i) == '*'){
+                    state = 0;
+                }else{
+                    state = 2;
+                }
+            break;
+            case(2): //Old pending asteriskif(text.charAt(i) == '*'){
+                state = 0;
+            break;
+        }
+    }
+    return text;
+}
+
+processToyTextFragment = function(text){
+    //logger.info("processToyTextFragment('"+text+"')");
+    var logText = "'"+text+"'";
+
+    if(text.length>1){
+        var rating = rateToyText(text);
+
+        if(rating > 0.25){
+            //It's good as is, leave it.
+            //return text;
+        }else if(rating > -0.1){
+            //Could use some work
+            text = text.toLowerCase();
+            logText += " (l)=> '"+text+"'";
+            text = fixContractions(text).trim();
+            logText += " (f)=> '"+text+"'";
+            text = replacePhrases(text).trim();
+            logText += " (r)=> '"+text+"'";
+            text = alterMessage(text).trim();
+            logText += " (a)=> '"+text+"'";
+            logger.info(logText);
+            //return text;
+        }else{
+            //Needs heavy editing.
+            //text = alterMessage(text);
+            text = text.toLowerCase();
+            logText += " (l)=> '"+text+"'";
+            text = fixContractions(text).trim();
+            logText += " (f)=> '"+text+"'";
+            text = insertRandomToyText(text).trim();
+            logText += " (i)=> '"+text+"'";
+            logger.info(logText);
+            //return text;
+        }
+    }
+    return text;
 }
 
 replacePhrases = function(message){
@@ -252,7 +331,7 @@ replacePhraseHelper = function(text, find, replace, reqConf){
     }
 }
 alterMessage = function(message, simpleMode){
-    logger.info("alterMessage("+message+")");
+    //logger.info("alterMessage("+message+")");
     if(message == null) return "";
     //message = message.toLowerCase();
     //var originalMessage = message;
@@ -260,9 +339,12 @@ alterMessage = function(message, simpleMode){
     //message = fixContractions(message);
     //message = replacePhrases(message);
 
+    message = message.replaceAll("_", " underscore ");
+    message = message.replaceAll(" ", "_");
+
     var words = myTagger.tag(tokenize(message));
     //logger.info(words);
-    logger.info("words: "+words.join(" "));
+    //logger.info("words: "+words.join(" "));
 
     var output = "";
     for(var i=0; i<words.length; i++){
@@ -293,22 +375,27 @@ alterMessage = function(message, simpleMode){
             //words[i].value = words[i].value.replaceAll('___', ' ');
             //words[i].value += " ";
         }
-        logger.info("words: "+words.join(" "));
+        //logger.info("words: "+words.join(" "));
         //if(i>0 && words[i].tag == 'word' && words[i-1].value != '*') output += ' ';
-        output += ' '+words[i].value;
+        //output += ' '+words[i].value;
+        output += words[i].value;
     }
     output = output.replaceAll(" ,", ",");
     output = output.replaceAll(" ?", "?");
     output = output.replaceAll(" .", ".");
     output = output.replaceAll(" !", "!");
 
+    
+    output = output.replaceAll("_", " ");
+    output = output.replaceAll(" underscore ", "_");
+
 
     return output.trim();
 }
 
 insertRandomToyText = function(text){
-    logger.info("insertRandomToyText()");
-	console.trace('Trace:');
+    //logger.info("insertRandomToyText()");
+	//console.trace('Trace:');
     var snippets = [
         "please fuck toy",
         "toy loves being used",
@@ -326,28 +413,66 @@ insertRandomToyText = function(text){
 }
 
 rateToyText = function(text){
-    //logger.info("rateToyText()");
-    //logger.info("'"+text+"'");
+    if(text.length < 1) text = " ";
+    var textWithoutSpaces = text.replaceAll(" ", "");
+    var nonSpaces = textWithoutSpaces.length;
+    var spaces = text.length - nonSpaces;
+    if(nonSpaces / (spaces+1) > 5){
+        return rateToyTextWithoutSpaces(text);
+    }else{
+        return rateToyTextWithSpaces(text);
+    }
+}
+
+rateToyTextWithSpaces = function(text){
     var goodRatings = stringSimilarity.findBestMatch(text, goodToyText);
     var closestGoodText = goodRatings.bestMatch.target;
     var closestGoodSim = goodRatings.bestMatch.rating;
     var goodStats = extractStatsFromRatings(goodRatings);
-    //logger.info("Good: ("+closestGoodSim+"): "+closestGoodText);
-    //logger.info(goodStats);
 
     var badRatings = stringSimilarity.findBestMatch(text, badToyText);
     var closestBadText = badRatings.bestMatch.target;
     var closestBadSim = badRatings.bestMatch.rating;
     var badStats = extractStatsFromRatings(badRatings);
-    //logger.info("Bad: ("+closestBadSim+"): "+closestBadText);
-    //logger.info(badStats);
 
     var output = goodStats.mean - badStats.mean + closestGoodSim - closestBadSim;
 	//If they used self pronouns or the word 'out', it can never be rated good.
 	var split = text.toLowerCase().trim().split(' ');
 	if(split.indexOf('i') >= 0 || split.indexOf('my') >= 0 || split.indexOf('me') >= 0 || split.indexOf('mine') >= 0 || split.indexOf('out') >= 0) output = Math.min(output, 0);
-    logger.info("rateToyText(): "+ round(output, 1));
-    logger.info("\t'"+text+"'");
+    //logger.info("rateToyText(): "+ round(output, 1));
+    //logger.info("\t'"+text+"'");
+
+    if(text.length < 8) output *= (text.length/8);
+    //logger.info("\t"+closestBadText);
+    if(closestBadSim > 0.9) output = -1 - closestBadSim;
+
+    return output;
+
+    //logger.info("\t\t Comparing '"+text+"' with '"+closestText+"'. (Sim:"+sim+" + Verb:"+verbosity+" = "+(sim+verbosity)+")");
+}
+
+rateToyTextWithoutSpaces = function(text){
+    var goodRatings = stringSimilarity.findBestMatch(text, goodToyTextSpaceless);
+    var closestGoodText = goodRatings.bestMatch.target;
+    var closestGoodSim = goodRatings.bestMatch.rating;
+    var goodStats = extractStatsFromRatings(goodRatings);
+
+    var badRatings = stringSimilarity.findBestMatch(text, badToyTextSpaceless);
+    var closestBadText = badRatings.bestMatch.target;
+    var closestBadSim = badRatings.bestMatch.rating;
+    var badStats = extractStatsFromRatings(badRatings);
+
+    var output = goodStats.mean - badStats.mean + closestGoodSim - closestBadSim;
+	//If they used self pronouns or the word 'out', it can never be rated good.
+	var split = text.toLowerCase().trim().split(' ');
+	if(split.indexOf('i') >= 0 || split.indexOf('my') >= 0 || split.indexOf('me') >= 0 || split.indexOf('mine') >= 0 || split.indexOf('out') >= 0) output = Math.min(output, 0);
+    //logger.info("rateToyText(): "+ round(output, 1));
+    //logger.info("\t'"+text+"'");
+
+    if(text.length < 8) output *= (text.length/8);
+    //logger.info("\t"+closestBadText);
+    if(closestBadSim > 0.9) output = -1 - closestBadSim;
+
     return output;
 
     //logger.info("\t\t Comparing '"+text+"' with '"+closestText+"'. (Sim:"+sim+" + Verb:"+verbosity+" = "+(sim+verbosity)+")");
@@ -481,11 +606,6 @@ fixContractions = function(message){
     message = message.replacePhrase("id", "i would", 0.99);
     return message;
 }
-
-String.prototype.replaceAll = function(search, replacement) {
-    var target = this;
-    return target.split(search).join(replacement);
-};
 
 String.prototype.replaceCase = function (bef, aft) {
     var before = bef.toLowerCase();
