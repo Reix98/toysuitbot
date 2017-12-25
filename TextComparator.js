@@ -38,6 +38,8 @@ init = function(log, sk){
 }
 
 processToyText = function(message){
+    var result = {};
+    result.points = 0;
     
     //Check for things that should never happen before we parse it.
     
@@ -77,14 +79,32 @@ processToyText = function(message){
 	
     message = message.replace(/([!,.:;~\n])\s*/g, "|$1|").split("|"); //Split into sentences
     //logger.info(message);
+    //var messagePieces = 0;
     for(var i=0; i<message.length; i++){
         message[i] = processToyTextSection(message[i]);
+        if(message[i].text.length>1){
+            logger.info("\t\t\t"+message[i]);
+            result.points += message[i].points;
+            //messagePieces++;
+        }
+        message[i] = message[i].text;
     }
-    return message.join("");
+    result.text = message.join(" ");
+    //result.points /= messagePieces;
+
+    
+    result.text = result.text.replaceAll(" ,", ",");
+    result.text = result.text.replaceAll(" ?", "?");
+    result.text = result.text.replaceAll(" .", ".");
+    result.text = result.text.replaceAll(" !", "!");
+
+    return result;
 }
 
 processToyTextSection = function(text){
     //logger.info("processToyTextSection('"+text+"')");
+    var result = {};
+    result.points = 0;
     
     if(text.length > 240){ //If the text is longer than 120 characters (About 20 words)
         var divisionPoint = Math.floor(Math.random()*text.length);
@@ -100,9 +120,15 @@ processToyTextSection = function(text){
         var betweenText = "";
         if(text1.substring(text1.length-1) == " ") betweenText += " ";
         if(text2.substring(0, 1) == " ") betweenText += " ";
-        text1 = processToyTextSection(text1).trim();
-        text2 = processToyTextSection(text2).trim();
-        return (text1 + betweenText + text2).trim();
+        text1 = processToyTextSection(text1);
+        result.points += text1.points * (divisionPoint/text.length);
+        text1 = text1.text;
+        text2 = processToyTextSection(text2);
+        result.points += text2.points * ((text.length-divisionPoint)/text.length);
+        text2 = text2.text;
+
+        result.text = (text1 + betweenText + text2);
+        return result;
     }
 
     message = text.split(' ');
@@ -117,11 +143,13 @@ processToyTextSection = function(text){
     var worstRatingWindowSize = 3;
     var maxWindowSize = 5;
 
+    result.points = message.length;
+
     do{
         worstRating = 1;
         for(var windowSize = 1; windowSize < maxWindowSize; windowSize++){
             for(var i = 0; i < message.length - windowSize + 1; i++){
-                text = message.slice(i, i+windowSize).join(' ').trim();
+                text = message.slice(i, i+windowSize).join(' ');
                 var rating = rateToyText(text);
                 //logger.info("'"+text+"': "+rating);
                 if(rating < worstRating){
@@ -134,14 +162,16 @@ processToyTextSection = function(text){
         //logger.info(" --- ");
         if(worstRating < badRatingThreshold){
             //logger.info(worstRating + " : '" + message.slice(worstRatingIndex, worstRatingIndex+worstRatingWindowSize) + "'");
-            text = message.slice(0, worstRatingIndex).join(' ').trim() + " " 
-            + processToyTextFragment(message.slice(worstRatingIndex, worstRatingIndex+worstRatingWindowSize).join(' ').trim())
-            + " " + message.slice(worstRatingIndex+worstRatingWindowSize).join(' ').trim();
+            text = message.slice(0, worstRatingIndex).join(' ') + " " 
+            + processToyTextFragment(message.slice(worstRatingIndex, worstRatingIndex+worstRatingWindowSize).join(' '))
+            + " " + message.slice(worstRatingIndex+worstRatingWindowSize).join(' ');
             message = text.split(' ');
+            result.points -= worstRatingWindowSize;
         }
     }while(worstRating < badRatingThreshold-badRatingThresholdDrift && tests++ < maxTests)
     //return fixAsterisks(message.join(' ').trim());
-    return message.join(' ').trim();
+    result.text = message.join(' ');
+    return result;
 }
 
 fixAsterisks = function(text){

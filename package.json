@@ -7,7 +7,9 @@
     "dependencies": {
         "discord.io": "github:woor/discord.io#gateway_v6",
         "en-inflectors": "^1.0.12",
+        "lzw": "0.0.3",
         "node-cache": "^4.1.1",
+        "node-lzw": "^0.3.1",
         "string-similarity": "^1.2.0",
         "wink-pos-tagger": "^0.4.0",
         "winston": "^2.4.0"

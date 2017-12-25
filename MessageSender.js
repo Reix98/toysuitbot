@@ -8,7 +8,7 @@ init = function(log, db, sk){
     sessionKeeper = sk;
 }
 
-sendMessage = function(channelID, message){
+sendMessage = function(channelID, message, callbackFunction){
     if(Array.isArray(channelID)){
         for(var i=0; i<channelID.length; i++){
             sendMessage(channelID[i], message);
@@ -17,7 +17,7 @@ sendMessage = function(channelID, message){
         discordBot.sendMessage({
             to: channelID,
             message: message
-        });
+        }, callbackFunction);
     }
 }
 
