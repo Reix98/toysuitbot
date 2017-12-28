@@ -78,16 +78,25 @@ handleCommand = function(user, userID, channelID, message, evt){
             case('!free'): free(profile, args, context); break;
             case('!safeword'): safeword(profile, args, context); break;
             case('!info'): info(profile, args, context); break;
+			case('!setinfo'):
             case('!set_info'): setInfo(profile, args, context); break;
             case('!kinks'): kinks(profile, args, context); break;
+			case('!setkinks'):
             case('!set_kinks'): setKinks(profile, args, context); break;
+			case('!setnickname'):
             case('!set_nickname'): setNickname(profile, args, context); break;
+			case('!settimer'):
             case('!set_timer'): setTimer(profile, args, context); break;
             case('!timer'): timer(profile, args, context); break;
+			case('!cleartimer'):
 			case('!clear_timer'): clearTimer(profile, args, context); break;
+			case('!settoytype'):
             case('!set_toy_type'): setToyType(profile, args, context); break;
+			case('!toytype'):
             case('!toy_type'): toyType(profile, args, context); break;
+			case('!settimerbonus'):
             case('!set_timer_bonus'): setTimerBonus(profile, args, context); break;
+			case('!triggerbonus'):
             case('!trigger_bonus'): triggerBonus(profile, args, context); break;
             case('!control'): control(profile, args, context); break;
             case('!gag'): gag(profile, args, context); break;
@@ -116,7 +125,7 @@ handleCommand = function(user, userID, channelID, message, evt){
 }
 
 ping = function(profile, args, context){
-    messageSender.sendMessage(context.channelID, 'Pong! ('+args+')');
+    messageSender.sendMessage(context.userID, 'Pong! ('+args+')');
 }
 
 /*register = function(profile, args, context){
@@ -155,10 +164,6 @@ requirePM = function(context){
         messageSender.sendMessage(context.channelID, "Sorry, that command is only available via PM. Please try again via pm! :)");
         throw "[silent] Command requires PM";
     }
-}
-
-noOmegas = function(profile){
-    if(profile['mode'] == "suited" && profile['toy mode'] == "omega") throw "Omega toys can't do that.";
 }
 
 toysuit = function(profile, args, context){
@@ -245,7 +250,6 @@ safeword = function(profile, args, context){
 }
 
 info = function(profile, args, context){
-    requirePM(context);
     if(args.length > 1) throw "Wrong number of arguments";
     var userProfile;
     if(args.length == 0){
@@ -262,29 +266,34 @@ info = function(profile, args, context){
         else info += "They are owned by " + getOwner(userProfile)['name'];
     }
     info += "\nInfo: "+userProfile['info'];
-    messageSender.sendMessage(context.channelID, info);
+    messageSender.sendMessage(context.userID, info);
 }
 
 setInfo = function(profile, args, context){
-    requirePM(context);
-    if(args.length == 0 || args.length > 2) throw "Wrong number of arguments";
-    var targetProfile;
+    if(args.length == 0) throw "Wrong number of arguments";
     var info;
-    if(args.length == 1){
-        targetProfile = sessionKeeper.getProfileFromUserID(context.userID);
-        info = args[0];
-    }else if(args.length == 2){
-        targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
-        if(targetProfile == null) throw "That user doesn't exist.";
-        if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
-        info = args[1];
-    }
-    targetProfile['info'] = info;
-    sessionKeeper.updateProfile(targetProfile);
+	
+	var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
+	var toyProfile = null;
+	if(args.length > 1) {
+		toyProfile = sessionKeeper.getProfileFromUserName(args[0], context.channelID);
+		info = args.slice(1);
+	}
+	if(toyProfile == null) {
+		toyProfile = sessionKeeper.getProfileFromUserID(context.userID);
+		info = args;
+	}
+    if(toyProfile == null) throw "That user doesn't exist."
+    
+	var result = accessControl.canSetInfo(userProfile, toyProfile);
+	
+    toyProfile['info'] = info.join(', ');
+    sessionKeeper.updateProfile(toyProfile);
+	
+    messageSender.sendMessage(context.channelID, result);
 }
 
 kinks = function(profile, args, context){
-    requirePM(context);
     if(args.length > 1) throw "Wrong number of arguments";
     var userProfile;
     if(args.length == 0){
@@ -295,46 +304,51 @@ kinks = function(profile, args, context){
     if(userProfile == null) throw "That user doesn't exist."
 
     var kinks = userProfile['kinks'];
-    messageSender.sendMessage(context.userID, userProfile['name']+"'s kinks: \n"+kinks);
+    messageSender.sendMessage(context.userID, userProfile['name']+"'s kinks:\n"+kinks);
 }
 
 setKinks = function(profile, args, context){
-    requirePM(context);
-    if(args.length == 0 || args.length > 2) throw "Wrong number of arguments";
-    var targetProfile;
+    if(args.length == 0) throw "Wrong number of arguments";
     var kinks;
-    if(args.length == 1){
-        targetProfile = sessionKeeper.getProfileFromUserID(context.userID);
-        kinks = args[0];
-    }else if(args.length == 2){
-        targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
-        if(targetProfile == null) throw "That user doesn't exist";
-        if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
-        kinks = args[1];
-    }
-    targetProfile['kinks'] = kinks;
-    sessionKeeper.updateProfile(targetProfile);
+	
+	var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
+	var toyProfile = null;
+	if(args.length > 1) {
+		toyProfile = sessionKeeper.getProfileFromUserName(args[0], context.channelID);
+		kinks = args.slice(1);
+	}
+	if(toyProfile == null) {
+		toyProfile = sessionKeeper.getProfileFromUserID(context.userID);
+		kinks = args;
+	}
+    if(toyProfile == null) throw "That user doesn't exist."
+    
+	var result = accessControl.canSetKinks(userProfile, toyProfile);
+	
+    toyProfile['kinks'] = kinks.join(', ');
+    sessionKeeper.updateProfile(toyProfile);
+	
+    messageSender.sendMessage(context.channelID, result);
 }
 
 setNickname = function(profile, args, context){
     var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
-    noOmegas(userProfile);
     requirePM(context);
     if(args.length == 0 || args.length > 2) throw "Wrong number of arguments";
-    var targetProfile;
+    var toyProfile;
     var nickname;
     if(args.length == 1){
-        targetProfile = sessionKeeper.getProfileFromUserID(context.userID);
+        toyProfile = sessionKeeper.getProfileFromUserID(context.userID);
         nickname = args[0];
     }else if(args.length == 2){
-        targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
-        if(targetProfile == null) throw "That user doesn't exist.";
-        if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
+        toyProfile = sessionKeeper.getProfileFromUserName(args[0]);
+        if(toyProfile == null) throw "That user doesn't exist.";
         nickname = args[1];
-        if(nickname == "[reset]") nickname = null;
     }
-    targetProfile['nickname'] = nickname;
-    sessionKeeper.updateProfile(targetProfile);
+    
+	var result = accessControl.attemptSetNickname(userProfile, toyProfile, nickname);
+	
+    messageSender.sendMessage(context.channelID, result);
 }
 
 setTimer = function(profile, args, context){

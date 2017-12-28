@@ -133,7 +133,7 @@ canClearTimer = function(userProfile, toyProfile) {
 	}
 	
 	//Only owners can clear a timer.
-	if(toyOwners.indexOf(userID) < 1) {
+	if(toyOwners.indexOf(userID) < 0) {
 		throw sessionKeeper.getName(userProfile)+" attempted to clear the timer for "+sessionKeeper.getName(toyProfile)+", but only an owner can do this! It still reads '"+time+"'...";
 	}
 	
@@ -242,6 +242,81 @@ canSafeword = function(toyProfile) {
 	return toyProfile['name']+" used their safeword, freeing themselves from the toysuit entirely.";
 };
 
+//canSetInfo
+//'userID' is attempting to set the profile info on 'toyProfile'.
+//Only an owner can do this.
+//Returns a flavor-text string to output if the clear succeeds, or throws an error string on failure.
+//Author: dawnmew
+canSetInfo = function(userProfile, toyProfile) {
+	var userID = userProfile['userID'];
+	var toyID = toyProfile['userID'];
+	var toyOwners = getRecursiveOwners(toyProfile);
+	
+	//Only owners can do this.
+	if(toyOwners.indexOf(userID) < 0) {
+		throw sessionKeeper.getName(toyProfile)+" does not belong to you, so you can't set its info.";
+	}
+	
+	//It should be allowed, then.
+	if(toyID == userID) return sessionKeeper.getName(toyProfile)+" has changed "+((toyProfile['mode']=='suited')?'its':'their')+" `!info` description.";
+	else return sessionKeeper.getName(userProfile)+" has changed the `!info` description for "+sessionKeeper.getName(toyProfile)+".";
+}
+
+//canSetKinks
+//'userID' is attempting to set the kink info on 'toyProfile'.
+//Only an owner can do this.
+//Returns a flavor-text string to output if the clear succeeds, or throws an error string on failure.
+//Author: dawnmew
+canSetKinks = function(userProfile, toyProfile) {
+	var userID = userProfile['userID'];
+	var toyID = toyProfile['userID'];
+	var toyOwners = getRecursiveOwners(toyProfile);
+	
+	//Only owners can do this.
+	if(toyOwners.indexOf(userID) < 0) {
+		throw sessionKeeper.getName(toyProfile)+" does not belong to you, so you can't set its kinks.";
+	}
+	
+	//It should be allowed, then.
+	if(toyID == userID) return sessionKeeper.getName(toyProfile)+" has changed "+((toyProfile['mode']=='suited')?'its':'their')+" `!kinks`.";
+	else return sessionKeeper.getName(userProfile)+" has changed the `!kinks` for "+sessionKeeper.getName(toyProfile)+".";
+}
+
+//attemptSetNickname
+//'userID' is attempting to set the nickname of 'toyProfile'.
+//Only an owner can do this.
+//Returns a flavor-text string to output if the clear succeeds, or throws an error string on failure.
+//Author: dawnmew
+attemptSetNickname = function(userProfile, toyProfile, nickname) {
+	var userID = userProfile['userID'];
+	var toyID = toyProfile['userID'];
+	var toyOwners = getRecursiveOwners(toyProfile);
+	
+	//Only owners can do this.
+	if(toyOwners.indexOf(userID) < 0) {
+		throw sessionKeeper.getName(toyProfile)+" does not belong to you, so you can't set its nickname.";
+	}
+	
+	//It should be allowed, then.
+	
+	var oldName = sessionKeeper.getName(toyProfile);
+	
+	if(nickname == '[reset]') {
+		nickname = null;
+	}
+	
+	toyProfile['nickname'] = nickname;
+	sessionKeeper.updateProfile(toyProfile);
+	
+	if(toyID == userID) {
+		if(nickname == null) return oldName+" has removed "+((toyProfile['mode']=='suited')?'its':'their')+" nickname, and is known as \""+toyProfile['name']+"\" once more.";
+		else return oldName+" has changed "+((toyProfile['mode']=='suited')?'its':'their')+" nickname to \""+nickname+"\"!";
+	}
+	else {
+		if(nickname == null) return sessionKeeper.getName(userProfile)+" has removed the nickname from "+oldName+", who is known as \""+toyProfile['name']+"\" once more.";
+		else return sessionKeeper.getName(userProfile)+" has set the nickname of "+oldName+" to \""+nickname+"\"!";
+	}
+}
 
 module.exports = {
     init: init,
@@ -249,5 +324,8 @@ module.exports = {
 	canClearTimer: canClearTimer,
 	canRelease: canRelease,
 	canFree: canFree,
-	canSafeword: canSafeword
+	canSafeword: canSafeword,
+	canSetInfo: canSetInfo,
+	canSetKinks: canSetKinks,
+	attemptSetNickname: attemptSetNickname
 }
