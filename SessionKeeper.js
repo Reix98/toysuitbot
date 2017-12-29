@@ -29,13 +29,12 @@ function UserProfile(props) {
     profile['suit timer'] = 0;
     profile['suit timer bonus count'] = 0;
     profile['suit timer bonus amount'] = null;
-    profile['toys'] = [];
     profile['ownerID'] = null;
     profile['info'] = "[Info not set]";
     profile['kinks'] = "[Kinks not set]";
     profile['toy mode'] = null;
 	profile['beta access list'] = [];
-	profile['can safeword'] = "yes";
+	profile['can safeword'] = true;
 	
 	for(var prop in props) {
 		this[prop] = props[prop];

@@ -232,7 +232,7 @@ canFree = function(userProfile, toyProfile) {
 //Author: dawnmew
 canSafeword = function(toyProfile) {
 	//Has the toy lost its ability to safeword...?
-	if(toyProfile['can safeword'] == 'no') {
+	if(!toyProfile['can safeword']) {
 		if(toyProfile['mode'] == 'suited') throw sessionKeeper.getName(toyProfile)+" attempted to use its safeword... but there is no escape for this toy.";
 		else throw sessionKeeper.getName(toyProfile)+" attempted to use their safeword... but the toysuit still waits to reclaim them.";
 	}
