@@ -106,7 +106,7 @@ processToyTextSection = function(text){
     var result = {};
     result.points = 0;
     
-    if(text.length > 240){ //If the text is longer than 120 characters (About 20 words)
+    if(text.length > 240){ //If the text is longer than 240 characters (About 40 words)
         var divisionPoint = Math.floor(Math.random()*text.length);
         var neighborhoodStart = Math.max(0, divisionPoint-5);
         var neighborhoodEnd = Math.min(divisionPoint+5, text.length);
