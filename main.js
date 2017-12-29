@@ -60,7 +60,16 @@ bot.on('messageUpdate', function(oldMsg, newMsg) {
 	
 	//Clever toys may edit messages to speak out of turn.
 	//Just delete anything they edit if they're suited.
-	var authorId = newMsg.author.id;
+	
+	var authorId = null;
+	if(newMsg && newMsg.author && newMsg.author.id) authorId = newMsg.author.id;
+	else if(oldMsg && oldMsg.author && oldMsg.author.id) authorId = oldMsg.author.id;
+	
+	if(authorId == null) {
+		console.log('ERROR: oldMsg and newMsg are both empty?');
+		return;
+	}
+	
 	var author = sk.getProfileFromUserID(authorId);
 	if(author != null && author['mode'] == 'suited') {
 		bot.deleteMessage({
