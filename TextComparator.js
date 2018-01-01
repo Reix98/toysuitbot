@@ -37,7 +37,7 @@ init = function(log, sk){
     });
 }
 
-processToyText = function(message){
+processToyText = function(message, lowTrustMode){
     var result = {};
     result.points = 0;
     
@@ -46,36 +46,40 @@ processToyText = function(message){
     if(message.length > 2000){
         return insertRandomToyText();
     }
+
+    if(lowTrustMode){
+
+        //Remove all non-ASCII text. Only English is supported, and pretty much anything else is probably trying to cheat.
+        for(var i = message.length-1; i >= 0; i--) {
+            if(message.charCodeAt(i) >= 255) message = message.slice(0,i)+message.slice(i+1);
+        }
+        
+        //Remove custom Discord emotes.
+        message = message.replace(/<:[A-za-z\d_-]+:\d+>/g, '');
+        
+        //Remove normal emotes. (Emoji in the UTF range are already purged by the above.)
+        message = message.replace(/:[A-za-z\d_-]+:/g, '');
+        
+        message = message.trim();
+        if(message == "") return "";
+        
+        //So, how many actual sequences longer than 2 letters are there?
+        var bigWords = (message.match(/([A-Za-z\d]{3,})/g)||[]).length;
+        //...Compared to the number that aren't?
+        var shortWords = (message.match(/\b([A-Za-z\d]{1,2})\b/g)||[]).length;
+        //If there are *way* more short phrases than long ones, this is suspicious.
+        if((shortWords/Math.max(bigWords,1)) >= 3.0 || shortWords > (bigWords+20)) return insertRandomToyText();
+        
+        
+        //No preformatted text. This could only be used for ASCII art or something.
+        message = message.replace(/`{3}[\n\t\r\w\d\s]*`{3}/gm, function(match) {
+            return match.substr(3, match.length-6);
+        });
+        message = message.replace(/`[^`]+`+?/g, function(match) {
+            return match.substr(1, match.length-2);
+        });
+    }
 	
-	//Remove all non-ASCII text. Only English is supported, and pretty much anything else is probably trying to cheat.
-	for(var i = message.length-1; i >= 0; i--) {
-		if(message.charCodeAt(i) >= 255) message = message.slice(0,i)+message.slice(i+1);
-	}
-	
-	//Remove custom Discord emotes.
-	message = message.replace(/<:[A-za-z\d_-]+:\d+>/g, '');
-	
-	//Remove normal emotes. (Emoji in the UTF range are already purged by the above.)
-	message = message.replace(/:[A-za-z\d_-]+:/g, '');
-	
-	message = message.trim();
-	if(message == "") return "";
-	
-	//So, how many actual sequences longer than 2 letters are there?
-	var bigWords = (message.match(/([A-Za-z\d]{3,})/g)||[]).length;
-	//...Compared to the number that aren't?
-	var shortWords = (message.match(/\b([A-Za-z\d]{1,2})\b/g)||[]).length;
-	//If there are *way* more short phrases than long ones, this is suspicious.
-	if((shortWords/Math.max(bigWords,1)) >= 3.0 || shortWords > (bigWords+20)) return insertRandomToyText();
-	
-	
-	//No preformatted text. This could only be used for ASCII art or something.
-	message = message.replace(/`{3}[\n\t\r\w\d\s]*`{3}/gm, function(match) {
-		return match.substr(3, match.length-6);
-	});
-	message = message.replace(/`[^`]+`+?/g, function(match) {
-		return match.substr(1, match.length-2);
-	});
 	
     message = message.replace(/([!,.:;~\n])\s*/g, "|$1|").split("|"); //Split into sentences
     //logger.info(message);

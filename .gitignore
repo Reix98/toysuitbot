@@ -4,4 +4,6 @@ node_modules/
 logs
 *.log
 profiles/
+profiles*/
 package-lock.json
+wordcloud/data/

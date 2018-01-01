@@ -1,4 +1,5 @@
 var fs = require('fs');
+var regression = require('regression');
 
 var logger;
 var discordBot;
@@ -34,7 +35,12 @@ function UserProfile(props) {
     profile['kinks'] = "[Kinks not set]";
     profile['toy mode'] = null;
 	profile['beta access list'] = [];
-	profile['can safeword'] = true;
+    profile['can safeword'] = true;
+    profile['sync level'] = 0;
+    profile['sync level history'] = [];
+    profile['parens allowed'] = true;
+    profile['sync state'] = 0;
+    profile['last activity'] = 0;
 	
 	for(var prop in props) {
 		this[prop] = props[prop];
@@ -106,148 +112,6 @@ init = function(log, bot){
 
 }
 
-/*
-
-getSessionCount = function(){
-    //logger.info("getSessionCount()");
-    var sessions = storage.getItemSync("sessions");
-    var count = 0;
-    for(var key in sessions){
-        if(sessions[key] != undefined) count++;
-    }
-    return count;
-}
-
-getToyList = function(){
-    //logger.info("getSessionCount()");
-    var sessions = storage.getItemSync("sessions");
-    var toyList = [];
-    for(var key in sessions){
-        if(sessions[key] != undefined) toyList.push(sessions[key]['targetUsername']);
-    }
-    return toyList;
-}
-
-getSessionFromToyID = function(toyID){
-    var sessions = storage.getItemSync("sessions");
-    for(var key in sessions){
-        var session = sessions[key];
-        if(session['targetUserID'] == toyID) return session;
-    }
-    return undefined;
-}
-
-getSessionVerbosity = function(session){
-    if(session['verbosity'] == undefined) return 0;
-    return session['verbosity'];
-}
-
-createSession = function(targetUserID, targetUsername, channelID){
-    //logger.info("createSession()");
-    var sessions = storage.getItemSync("sessions");
-    var session = {};
-    session['targetUserID'] = targetUserID;
-    session['targetUsername'] = targetUsername;
-    session['channelID'] = channelID;
-    session['gag'] = false;
-    session['control'] = false;
-    session['paren'] = true;
-    session['verbose'] = false;
-    session['verbosity'] = 0;
-    session['users'] = {};
-    session['channels'] = {};
-    sessions[targetUserID] = session;
-    //logger.info("Sessions: "+sessions);
-    storage.setItemSync("sessions", sessions);
-    return session;
-}
-
-setSessionVerbosity = function(session, verbosity){
-    session['verbosity'] = verbosity;
-    updateSession(session);
-}
-
-deleteSession = function(session){
-    //logger.info("deleteSession()");
-    var sessions = storage.getItemSync("sessions");
-    for(var key in sessions){
-        var testSession = sessions[key];
-        //logger.info("comparing "+testSession['targetUsername']+" and "+session['targetUsername']);
-        if(testSession['targetUsername'] == session['targetUsername']){
-            delete sessions[key];
-        }
-    }
-    storage.setItemSync("sessions", sessions);
-}
-
-getSessionFromToyName = function(targetUsername){
-    var sessions = storage.getItemSync("sessions");
-    for(var key in sessions){
-        var session = sessions[key];
-        if(session['targetUsername'] == targetUsername) return session;
-    }
-    return undefined;
-}
-
-getToyNameFromToyID = function(toyID){
-    var session = getSessionFromToyID(toyID);
-    if(session != null){
-        return session['targetUsername'];
-    }
-    return undefined;
-}
-
-getSessionFromUserName = function(targetUsername){
-    var sessions = storage.getItemSync("sessions");
-    for(var key in sessions){
-        var session = sessions[key];
-        var users = session['users'];
-        for(var userID in users){
-            var username = users[userID];
-            if(username == targetUsername) return session;
-        }
-    }
-    return undefined;
-}
-
-getSessionUserNum = function(session){
-    var count = 0;
-    for(key in session['users']){
-        if(session['users'][key] != undefined){
-            count++;
-        }
-    }
-    return count;
-}
-
-addUserToSession = function(session, userID, username){
-    //logger.info("addUserToSession(["+session+"], ["+userID+"], ["+username+"])");
-    session['users'][userID] = username;
-    return session;
-}
-
-setUserChannelID = function(session, userID, channelID){
-    session['channels'][userID] = channelID;
-    return session;
-}
-
-removeUserFromSession = function(session, userID){
-    delete session['users'][userID];
-    return session;
-}
-
-updateSession = function(session){
-    var sessions = storage.getItemSync("sessions");
-    for(var key in sessions){
-        var testSession = sessions[key];
-        if(testSession['targetUsername'] == session['targetUsername']){
-            sessions[key] = session;
-        }
-    }
-    storage.setItemSync("sessions", sessions);
-}
-
-/* --- */
 
 noteUser = function(userID) {
 	//This is triggered by main.js when a user's presence status changes.
@@ -348,13 +212,108 @@ getName = function(profile){
     else return profile['nickname'];
 }
 
+getSyncLevel = function(profile){
+    var sync = profile['sync level'];
+    if(sync != undefined && sync != null){
+        if(isNaN(sync)) return 0;
+        return sync;
+    }
+    return 0;
+}
+
+changeSyncLevel = function(profile, delta){
+    if(isNaN(delta)) return profile;
+    var sync = getSyncLevel(profile);
+    profile['sync level'] = Math.min(100, Math.max(-100, sync + delta));
+    profile['sync level history'].push(profile['sync level']);
+    if(profile['sync level history'].length>100){
+        profile['sync level history'].shift();
+    }
+    updateProfile(profile);
+}
+
+getSyncLevelTrend = function(profile, time){
+    var data = [];
+    var x = 0-profile['sync level history'].length;
+    for(key in profile['sync level history']){
+        if(x >= -1 * time){
+            data.push([x, profile['sync level history'][key]]);
+        }
+        x++;
+    }
+    //console.log(data);
+    var result = regression.linear(data);
+    var prediction = result.predict(1)[1];
+    var trend = prediction - profile['sync level'];
+    //console.log(prediction + " (" + trend + ")");
+    if(trend == "NaN") return 0;
+    return trend;
+}
+
+getSyncState = function(profile){
+    var syncState = profile['sync state'];
+    if(syncState != undefined && syncState != null){
+        return syncState;
+    }
+    return 0;
+}
+
+setSyncState = function(profile, state){
+    profile['sync state'] = state;
+    updateProfile(profile);
+}
+
+updateSyncState = function(profile){
+    var syncState = getSyncState(profile);
+    var prevState = syncState;
+    var sync = getSyncLevel(profile);
+    switch(syncState){
+        case(-2):   //Very low sync
+            if(sync > -70) setSyncState(profile, -1);
+        break;
+        case(-1):   //Low sync
+            if(sync < -80) setSyncState(profile, -2);
+            if(sync > -20) setSyncState(profile, 0);
+        break;
+        case(0):    //Neutral sync
+            if(sync < -30) setSyncState(profile, -1);
+            if(sync > 30) setSyncState(profile, 1);
+        break;
+        case(1):    //High sync
+            if(sync < 20) setSyncState(profile, 0);
+            if(sync > 80) setSyncState(profile, 2);
+        break;
+        case(2):    //Very high sync
+            if(sync < 70) setSyncState(profile, 1);
+        break;
+    }
+    syncState = getSyncState(profile);
+    return (syncState - prevState);
+}
+
 getOwner = function(profile){
     if(!profile['ownerID']) return null;
     return getProfileFromUserID(profile['ownerID']);
 }
 
-getToyType = function(profile){
+getToyType = function(profile, exclusive){
+    if(exclusive){
+        var type = profile['toy mode'];
+        if(type == "alpha") return "alpha";
+        if(type == "beta")  return "beta";
+        if(type == "omega") return "omega";
+        return "beta";
+    }
     return profile['toy mode'];
+}
+
+getToyTypeSymbol = function(profile){
+    switch(profile['toy mode']){
+        case('alpha'): return "α";
+        case('beta'): return "β";
+        case('omega'): return "ω";
+    }
+    return "?";
 }
 
 getNextLowestToyType = function(type){
@@ -417,18 +376,6 @@ readableTime = function(time){
 
 module.exports = {
     init: init,
-    /*getSessionFromToyName: getSessionFromToyName,
-    getSessionFromUserName: getSessionFromUserName,
-    createSession: createSession,
-    addUserToSession: addUserToSession,
-    setUserChannelID: setUserChannelID,
-    updateSession: updateSession,
-    deleteSession: deleteSession,
-    getSessionUserNum: getSessionUserNum,
-    setUserChannelID: setUserChannelID,
-    getSessionFromToyID: getSessionFromToyID,
-    getToyNameFromToyID: getToyNameFromToyID,
-    getSessionVerbosity: getSessionVerbosity,*/
 	noteUser: noteUser,
     getProfileFromUserID: getProfileFromUserID,
     getProfileFromUserName: getProfileFromUserName,
@@ -439,7 +386,13 @@ module.exports = {
     getName: getName,
     getOwner: getOwner,
     getToyType: getToyType,
+    getToyTypeSymbol: getToyTypeSymbol,
     getNextLowestToyType: getNextLowestToyType,
-	readableTime: readableTime
+    readableTime: readableTime,
+    getSyncLevel: getSyncLevel,
+    getSyncLevelTrend: getSyncLevelTrend,
+    changeSyncLevel: changeSyncLevel,
+    getSyncState: getSyncState,
+    updateSyncState: updateSyncState
 }
 

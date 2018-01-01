@@ -1,9 +1,11 @@
 var logger;
 var sessionKeeper;
+var messageSender;
 
-init = function(log, sk){
+init = function(log, sk, ms){
     logger = log;
-    sessionKeeper = sk;
+	sessionKeeper = sk;
+	messageSender = ms;
 }
 
 //getRecursiveOwners
@@ -233,8 +235,10 @@ canFree = function(userProfile, toyProfile) {
 canSafeword = function(toyProfile) {
 	//Has the toy lost its ability to safeword...?
 	if(!toyProfile['can safeword']) {
-		if(toyProfile['mode'] == 'suited') throw sessionKeeper.getName(toyProfile)+" attempted to use its safeword... but there is no escape for this toy.";
-		else throw sessionKeeper.getName(toyProfile)+" attempted to use their safeword... but the toysuit still waits to reclaim them.";
+		if(toyProfile['mode'] == 'suited'){
+            messageSender.sendMessage(toyProfile['userID'], "Hmm... no. I don't think so, toy. You're mine now.");
+			throw sessionKeeper.getName(toyProfile)+" attempted to use its safeword... but there is no escape for this toy.";
+		}else throw sessionKeeper.getName(toyProfile)+" attempted to use their safeword... but the toysuit still waits to reclaim them.";
 	}
 	
 	if((toyProfile['toy mode'] == null || toyProfile['toy mode'] == 'dom') && toyProfile['mode'] != 'suited') return toyProfile['name']+" used their safeword, clearing all toysuit settings.";

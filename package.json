@@ -5,12 +5,22 @@
     "main": "bot.js",
     "author": "Hexblue",
     "dependencies": {
+        "brain": "^0.7.0",
+        "compromise": "^11.2.1",
+        "conjugate": "^1.0.3",
         "discord.io": "github:woor/discord.io#gateway_v6",
         "en-inflectors": "^1.0.12",
         "lzw": "0.0.3",
+        "natural": "^0.5.4",
         "node-cache": "^4.1.1",
         "node-lzw": "^0.3.1",
+        "random-weighted-choice": "^0.1.3",
+        "regression": "^2.0.1",
+        "speakeasy-nlp": "^0.2.12",
+        "stopword": "^0.1.9",
+        "string-hash": "^1.1.3",
         "string-similarity": "^1.2.0",
+        "synonyms": "^1.0.1",
         "wink-pos-tagger": "^0.4.0",
         "winston": "^2.4.0"
     }
