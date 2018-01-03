@@ -145,6 +145,7 @@ getProfileFromUserID = function(userID){
 }
 
 getProfileFromUserName = function(username){
+    var nicknameResult = null;
     for(var key in profileCache){
         var profile = profileCache[key];
         //logger.info("Comparing '"+profile['name']+"' and '"+username+"'.");
@@ -152,8 +153,21 @@ getProfileFromUserName = function(username){
             //logger.info("getProfileFromUserName("+username+"):\n"+profile);
             return profile;
         }
+        if(username && profile['nickname'] && (profile['nickname'].toLowerCase().trim() == username.toLowerCase().trim())){
+            nicknameResult = profile;
+        }
     }
+
+    if(nicknameResult){
+        return nicknameResult;
+    }
+
     return createProfileFromUsername(username);
+}
+
+getLastActivity = function(profile){
+    if(profile['last activity'] == null) return 0;
+    return profile['last activity'];
 }
 
 createProfileFromUserID = function(userID){
@@ -161,8 +175,8 @@ createProfileFromUserID = function(userID){
 	var users = discordBot.users;
 	
 	if(!users.hasOwnProperty(userID)) {
-		logger.error('User ID "'+userID+'" does not exist, but was passed to createProfileFromUserID?');
-		console.trace("DEBUG: Stack trace for bad createProfileFromUserID call:");
+		//logger.error('User ID "'+userID+'" does not exist, but was passed to createProfileFromUserID?');
+		//console.trace("DEBUG: Stack trace for bad createProfileFromUserID call:");
 		return null;
 	}
 	
@@ -347,13 +361,9 @@ updateProfile = function(profile){
 }
 
 getUserIDFromUserName = function(username){
-    //logger.info("getUserIDFromUserName("+username+")");
-    for(var key in profileCache){
-        var profile = profileCache[key];
-        //logger.info("Comparing '"+profile['name']+"' and '"+username+"'.");
-        if(username && (profile['name'].toLowerCase().trim() == username.toLowerCase().trim() || ('<@'+key+'>' == username))) return userID;
-    }	
-    return null;
+    var profile = getProfileFromUserName(username);
+    if(profile == null) return null;
+    return profile['userID'];
 }
 
 readableTime = function(time){
@@ -393,6 +403,7 @@ module.exports = {
     getSyncLevelTrend: getSyncLevelTrend,
     changeSyncLevel: changeSyncLevel,
     getSyncState: getSyncState,
-    updateSyncState: updateSyncState
+    updateSyncState: updateSyncState,
+    getLastActivity: getLastActivity
 }
 

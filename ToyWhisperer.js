@@ -16,6 +16,11 @@ var actionQueue;
 var fs = require('fs');
 var goodToyText;
 
+var optionLocks = [];
+
+var minutes = 60;
+var hours = 60*minutes;
+
 
 init = function(log, db, sk, ms, ch){
     logger = log;
@@ -24,6 +29,12 @@ init = function(log, db, sk, ms, ch){
     messageSender = ms;
     actionQueue = [];
     commandHandler = ch;
+
+	if(!fs.existsSync('toywhisperer data')) {
+		console.log('No toywhisperer data folder exists. Creating one now...');
+		fs.mkdirSync('toywhisperer data');
+    }
+    try{ readWhispererFiles(); }catch(e){ console.log("Failed to read toy whisperer files.");  }
 
     fs.readFile("goodtoy.txt", 'utf8', function(err, data) {
         if (err) throw err;
@@ -39,7 +50,41 @@ init = function(log, db, sk, ms, ch){
     setInterval(function(){
         whisperToys();
         checkActionQueue();
+        checkOptionLocks();
+        writeWhispererFiles();
     }, 1000);
+}
+
+writeWhispererFiles = function(){
+    try{
+        var filename = 'toywhisperer data/option locks.json';
+        var data = JSON.stringify(optionLocks);
+        fs.writeFile(filename, data, function(){
+            //File done writing.
+        }); 
+        
+        filename = 'toywhisperer data/toy queue.json';
+        data = JSON.stringify(toyQueue);
+        fs.writeFile(filename, data, function(){
+            //File done writing.
+        }); 
+    }catch(e){
+        console.log(e);
+    }
+}
+
+readWhispererFiles = function(){
+    try{
+        var filename = 'toywhisperer data/option locks.json';
+        rawMap = fs.readFileSync(filename);  
+        optionLocks = JSON.parse(rawMap);
+
+        filename = 'toywhisperer data/toy queue.json';
+        rawMap = fs.readFileSync(filename);  
+        toyQueue = JSON.parse(rawMap);
+    }catch(e){
+        console.log(e);
+    }
 }
 
 queueToy = function(profile){
@@ -52,9 +97,13 @@ whisperToys = function(){
     if(toyQueue.length > 0){
         for(key in toyQueue){
             var profile = sk.getProfileFromUserID(toyQueue[key]);
-            var deltaTime = Math.floor(Date.now() / 1000) - profile['last activity'];
-            if(deltaTime > 30){
-                whisperToy(toyQueue.splice(key, 1));
+            if(profile != null){
+                var deltaTime = Math.floor(Date.now() / 1000) - sk.getLastActivity(profile);
+                if(deltaTime > 30 && deltaTime < 5*minutes){
+                    whisperToy(toyQueue.splice(key, 1));
+                }else if(deltaTime > 1  && profile['userID'] == '75650015531372544'){
+                    whisperToy(toyQueue.splice(key, 1));
+                }
             }
         }
     }
@@ -87,13 +136,15 @@ whisperToy = function(userID){
         var dataset = {};
         dataset.options = options;
         dataset.optionActions = optionActions;
+
+        var i=0;
         
         if(matches(status, null, [0, null], [0, null])) dataset = addOption(dataset, 1, 0, [
             {type: "message", time: 0, channelID: toyID, text: "What a good toy you're being."},
             {type: "message", time: 2, channelID: toyID, text: "Keep it up, toy."}
-        ]);
+        ], i++);
     
-        if(!profile['controlled'] && matches(status, null, [null, 0], [null, -1])) dataset = addOption(dataset, 1, 0, [
+        if(false && !profile['controlled'] && matches(status, null, [null, 0], [null, -1])) dataset = addOption(dataset, 1, 0, [
             {type: "message", time: 0,          channelID: toyID,           text: "I think you need some motivation, toy."},
             {type: "command", time: 1,          userID: toyID,              name: "control"},
             {type: "message", time: 2,          channelID: lastChannelID,   text: msgPrefix+"*"+rwc(goodToyText)+"*"},
@@ -102,7 +153,7 @@ whisperToy = function(userID){
             {type: "message", time: 22+r()*4,   channelID: lastChannelID,   text: msgPrefix+"*"+rwc(goodToyText)+"*"},
             {type: "command", time: 26,         userID: toyID,              name: "control"},
             {type: "message", time: 28,         channelID: toyID,           text: "There, perhaps that will help."}
-        ]);
+        ], i++);
 
         options = dataset.options;
         optionActions = dataset.optionActions;
@@ -118,27 +169,86 @@ whisperToy = function(userID){
             if(options[key].priority < highestPriority){
                 options[key].weight = 0;
             }
+            if(optionIsLocked(userID, options[key].id)){
+                if(options[key] != null){
+                    options[key].weight = 0;
+                }
+            }
         }
 
         //console.log(options);
 
+        //debug(userID, 'test1');
+
         var optionIndex = rwc(options);
-        //console.log(optionIndex);
-
-        var actions = optionActions[optionIndex];
-        //console.log(actions);
-
-        for(key in actions){
-            console.log("actions["+key+"]: "+actions[key]);
-            var action = actions[key];
-            //console.log(action);
-            if(action.type == "message"){
-                var message = action.text;
-                message = message.replaceAll("[name]", profile['name']);
-                message = message.replaceAll("[type]", toyType);
-                action.text = message;
+        if(optionIndex != null){
+            lockOption(userID, optionIndex, 10*minutes);
+            //console.log(optionIndex);
+    
+            var actions = optionActions[optionIndex];
+            //console.log(actions);
+    
+            //debug(userID, 'test2');
+            for(key in actions){
+                //debug(userID, 'test3');
+                console.log("actions["+key+"]: "+actions[key]);
+                var action = actions[key];
+                //console.log(action);
+                if(action.type == "message"){
+                    //debug(userID, 'test4');
+                    var message = action.text;
+                    message = message.replaceAll("[name]", profile['name']);
+                    message = message.replaceAll("[type]", toyType);
+                    action.text = message;
+                }
+                queueAction(action);
             }
-            queueAction(action);
+        }
+    }
+}
+
+debug = function(userID, message){
+    if(userID == '75650015531372544'){
+        //messageSender.sendMessage(userID, message);
+    }
+}
+
+lockOption = function(userID, index, time){
+    var lock = {};
+    lock.userID = userID;
+    lock.index = index;
+    lock.timeout = Math.floor(Date.now() / 1000) + time;
+    optionLocks.push(lock);
+    //console.log("lockOption("+userID+", "+index+", "+time+")");
+}
+
+optionIsLocked = function(userID, index){
+    //console.log("optionIsLocked("+userID+", "+index+")");
+    //console.log(optionLocks);
+    for(key in optionLocks){
+        var lock = optionLocks[key];
+        if(lock != null && (lock.userID == userID || lock.userID[0] == userID) && lock.index == index){
+            //console.log("optionIsLocked() test1");
+            if(lock.timeout > Math.floor(Date.now() / 1000)){
+                //console.log("optionIsLocked() test2");
+                return true;
+            }else{
+                //console.log("optionIsLocked() test3");
+                delete optionLocks[key];
+            }
+        }
+    }
+    return false;
+}
+
+checkOptionLocks = function(){
+    while(optionLocks.indexOf(null) > -1){
+        optionLocks.splice(optionLocks.indexOf(null), 1);
+    }
+    for(key in optionLocks){
+        var lock = optionLocks[key];
+        if(lock != null && lock.timeout < Math.floor(Date.now() / 1000)){
+            delete optionLocks[key];
         }
     }
 }
@@ -194,7 +304,7 @@ performAction = function(action){
     }
 }
 
-addOption = function(dataset, w, p, actions){
+addOption = function(dataset, w, p, actions, optionIndex){
     var index = dataset.options.length;
     dataset.optionActions[index] = actions;
     dataset.options.push({weight: w, priority: p, id: index});

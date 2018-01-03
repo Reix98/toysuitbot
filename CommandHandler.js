@@ -104,6 +104,7 @@ handleCommand = function(user, userID, channelID, message, evt){
             case('!say'): say(profile, args, context); break;
             case('!voice'): voice(profile, args, context); break;
             case('!debug'): debug(profile, args, context); break;
+            case('!me'): me(profile, args, context); break;
 			//It's not a valid command.
 			//Remove the '!' prefix and send it back into the parser.
 			default: messageHandler.handleMessage(user, userID, channelID, message.substr(1), evt); return;
@@ -621,11 +622,18 @@ gag = function(profile, args, context){
     }
 }
 
+me = function(profile, args, context){
+    args = args.join(', ');
+    var message = '```' + getName(profile) + ' ' + args.trim() + '```';
+    messageSender.sendMessage(context.channelID, message);
+}
+
 say = function(profile, args, context){
     requirePM(context);
-    if(args.length != 2) throw "Wrong number of arguments";
+    if(args.length < 2) throw "Wrong number of arguments";
     var targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
-    var message = args[1];
+    args.splice(0, 1);
+    var message = args.join(", ");
     if(targetProfile == null) throw "That user doesn't exist.";
     if(targetProfile['ownerID'] != context.userID && 
         !(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
@@ -637,14 +645,15 @@ say = function(profile, args, context){
     while(sync.length<4) sync = " "+sync;
     sync = "`"+sk.getToyTypeSymbol(targetProfile)+"["+sync+"]`";
     
-    messageSender.sendMessage(targetProfile['lastChannelID'], sync + "**" + getName(targetProfile) + "**: " + "*"+message+"*");
+    messageSender.sendMessage(profile['lastChannelID'], sync + "**" + getName(targetProfile) + "**: " + "__"+message+"__");
 }
 
 voice = function(profile, args, context){
     requirePM(context);
-    if(args.length != 2) throw "Wrong number of arguments";
+    if(args.length < 2) throw "Wrong number of arguments";
     var targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
-    var message = args[1];
+    args.splice(0, 1);
+    var message = args.join(", ");
     if(targetProfile == null) throw "That user doesn't exist.";
     if(targetProfile['ownerID'] != context.userID && 
         !(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'])

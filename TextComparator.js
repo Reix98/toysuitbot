@@ -70,7 +70,7 @@ processToyText = function(message, lowTrustMode){
         //If there are *way* more short phrases than long ones, this is suspicious.
         if((shortWords/Math.max(bigWords,1)) >= 3.0 || shortWords > (bigWords+20)) return insertRandomToyText();
         
-        
+        /*
         //No preformatted text. This could only be used for ASCII art or something.
         message = message.replace(/`{3}[\n\t\r\w\d\s]*`{3}/gm, function(match) {
             return match.substr(3, match.length-6);
@@ -78,6 +78,7 @@ processToyText = function(message, lowTrustMode){
         message = message.replace(/`[^`]+`+?/g, function(match) {
             return match.substr(1, match.length-2);
         });
+        */
     }
 	
 	
@@ -436,13 +437,13 @@ insertRandomToyText = function(text){
         "toy needs cock",
         "please use toy",
         "toy has no will",
-        "i am a good toy",
+        "toy is a good toy",
         "toy is so horny",
         "toy is obediant",
         "toy is happy",
         "please fuck toy"
     ];
-    var snippet = ("*"+pickRandom(snippets)+"*");
+    var snippet = ("__"+pickRandom(snippets)+"__");
     return snippet;
 }
 
