@@ -105,6 +105,9 @@ handleCommand = function(user, userID, channelID, message, evt){
             case('!voice'): voice(profile, args, context); break;
             case('!debug'): debug(profile, args, context); break;
             case('!me'): me(profile, args, context); break;
+			case('!setowner'):
+			case('!set_owner'): setClaimable(profile, args, context); break;
+			case('!help'): helpMe(profile, args, context); break;
 			//It's not a valid command.
 			//Remove the '!' prefix and send it back into the parser.
 			default: messageHandler.handleMessage(user, userID, channelID, message.substr(1), evt); return;
@@ -578,8 +581,11 @@ control = function(profile, args, context, override){
     if(!override){
         if(targetProfile['ownerID'] != context.userID && 
             !(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
-        ) throw "You do not own them"
-        if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
+        ) throw "You do not own them";
+        if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit";
+		//RC - made public omegas helpless
+		if(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'] && targetProfile['controlled'] && targetProfile['userID'] == context.userID)
+			throw "Unowned omegas can't unrestrict themselves";
     }
 
     if(targetProfile['controlled']) targetProfile['controlled'] = false;
@@ -600,8 +606,14 @@ gag = function(profile, args, context){
     if(args.length != 1) throw "Wrong number of arguments";
     var targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
     if(targetProfile == null) throw "That user doesn't exist.";
-    if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
-    if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
+	//RC - now open to public omegas
+    if(targetProfile['ownerID'] != context.userID && 
+        !(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
+    ) throw "You do not own them";
+	//RC - made public omegas helpless
+	if(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'] && targetProfile['gagged'] && targetProfile['userID'] == context.userID)
+		throw "Unowned omegas can't unrestrict themselves";
+    if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit";
 
     if(targetProfile['gagged']) targetProfile['gagged'] = false;
     else targetProfile['gagged'] = true;
@@ -637,8 +649,12 @@ say = function(profile, args, context){
     if(targetProfile == null) throw "That user doesn't exist.";
     if(targetProfile['ownerID'] != context.userID && 
         !(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
-    ) throw "You do not own them"
-    if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
+    ) throw "You do not own them";
+	//RC - made unable to use on self
+	if(targetProfile['userID'] == context.userID)
+		throw "You can't make yourself say things!";
+	
+    if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit";
     
     var syncLevel = sk.getSyncLevel(targetProfile);
     var sync = Math.max(-99, Math.min(100, Math.round(syncLevel)))+"%";
@@ -657,14 +673,45 @@ voice = function(profile, args, context){
     if(targetProfile == null) throw "That user doesn't exist.";
     if(targetProfile['ownerID'] != context.userID && 
         !(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
-    ) throw "You do not own them"
-    if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
+    ) throw "You do not own them";
+	//RC - made unable to use on self
+	if(targetProfile['userID'] == context.userID)
+		throw "You can't make yourself hear things!";
+    if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit";
     
     messageSender.sendMessage(targetProfile['userID'], "**Toysuit**: " + "*"+message+"*");
 }
 
 limit = function(val, min, max){
     return Math.min(max, Math.max(min, val));
+}
+
+//Changes the toy's owner //By RC
+setOwner = function(profile, args, context) {
+	requirePM(context);
+	if(args.length != 2) throw "Wrong number of arguments";
+	var targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
+	var ownerProfile = sessionKeeper.getProfileFromUserName(args[1]);
+
+	if(targetProfile == null) throw "That user doesn't exist.";
+	 if(targetProfile['ownerID'] != context.userID)
+		 throw "You do not own them";
+	if(ownerProfile == null) {
+		throw "Can't find new owner";
+	} else {
+		targetProfile['ownerID'] = ownerProfile['userID'];
+	}
+	messageSender.sendMessage(targetProfile['userID'], "Owner changed");
+}
+
+//Prints list of commands //By RC
+helpMe = function(profile, args, context) {
+if(args.length > 0) throw "Wrong number of arguments";
+
+    var helpInfo = "Commands:\n\n!toysuit username\n!release username\n!free username\n!safeword\n!remove_safeword\n!info username\n!setinfo username,info\n!kinks username\n!setkinks username,kinks\n!setnickname username,nickname\n!timer username\n!settimer username,time\n!cleartimer username\n!triggerbonus username\n!settimerbonus username,time\n!toytype username\n!settoytype username,type\n!control username\n!gag username\n!say username,text\n!voice username,text\n!me text\n!help\n!setowner toyusername,ownerusername";
+  case('!ping'): ping(profile, args, context); break;
+            //case('!register'): register(profile, args, context); break;
+    messageSender.sendMessage(context.userID, helpInfo);
 }
 
 module.exports = {

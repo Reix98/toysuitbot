@@ -165,9 +165,9 @@ canRelease = function(userProfile, toyProfile) {
 		else throw sessionKeeper.getName(userProfile)+" attempts to release "+sessionKeeper.getName(toyProfile)+", but its timer still reads '"+time+"'.";
 	}
 	
-	//An owner is releasing the toy - always allowed.
+	//An owner is releasing the toy - always allowed, //RC  unless self-owned omega.
 	if(toyOwners.indexOf(userID) >= 0) {
-		if(userID == toyID) toyProfile['name']+" released themselves from the toysuit.";
+		if(userID == toyID && toyProfile['toy mode'] != 'omega') return toyProfile['name']+" released themselves from the toysuit.";
 		else return toyProfile['name']+" has been released from the toysuit by "+sessionKeeper.getName(userProfile)+".";
 	}
 	
@@ -200,7 +200,7 @@ canRelease = function(userProfile, toyProfile) {
 //canFree
 //'userID' is attempting to free the toy with profile 'toyProfile.'
 //This operation, if successful, would *fully delete* that toy's profile.
-//It can generally only be done by the toy's owner, and requires them to be released already.
+//It can generally only be done by the toy's owner, and requires them to be released already. //RC self-owned omegas can't do this
 //Returns a flavor-text string to output if the free succeeds, or throws an error string on failure.
 //Author: dawnmew
 canFree = function(userProfile, toyProfile) {
@@ -213,7 +213,10 @@ canFree = function(userProfile, toyProfile) {
 	if(toyOwners.indexOf(userID) < 0) {
 		if(userID == toyID) throw sessionKeeper.getName(toyProfile)+" tried to free itself from the toysuit entirely, but it's no use...";
 		else throw sessionKeeper.getName(userProfile)+" tried to free "+sessionKeeper.getName(toyProfile)+" from its toysuit entirely, but it's no use...";
+	}else {
+		if(userID == toyID && toyProfile['toy mode'] == 'omega') throw sessionKeeper.getName(toyProfile)+" tried to release itself from the toysuit, but it's no use...";
 	}
+	
 	
 	//Only a released toy can be freed.
 	if(toyProfile['mode'] == 'suited') {
@@ -268,7 +271,7 @@ canSetInfo = function(userProfile, toyProfile) {
 
 //canSetKinks
 //'userID' is attempting to set the kink info on 'toyProfile'.
-//Only an owner can do this.
+//Only an owner can do this. \\RC - Modified to only the toy themselves
 //Returns a flavor-text string to output if the clear succeeds, or throws an error string on failure.
 //Author: dawnmew
 canSetKinks = function(userProfile, toyProfile) {
@@ -277,9 +280,12 @@ canSetKinks = function(userProfile, toyProfile) {
 	var toyOwners = getRecursiveOwners(toyProfile);
 	
 	//Only owners can do this.
-	if(toyOwners.indexOf(userID) < 0) {
-		throw sessionKeeper.getName(toyProfile)+" does not belong to you, so you can't set its kinks.";
-	}
+	//if(toyOwners.indexOf(userID) < 0) {
+	//	throw sessionKeeper.getName(toyProfile)+" does not belong to you, so you can't set its kinks.";
+	//}
+	//RC: Only toy can set kinks.
+	if(toyID != userID)
+		throw "Only "+sessionKeeper.getName(toyProfile)+" can set their own kinks!";
 	
 	//It should be allowed, then.
 	if(toyID == userID) return sessionKeeper.getName(toyProfile)+" has changed "+((toyProfile['mode']=='suited')?'its':'their')+" `!kinks`.";

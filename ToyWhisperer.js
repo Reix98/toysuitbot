@@ -99,7 +99,7 @@ whisperToys = function(){
             var profile = sk.getProfileFromUserID(toyQueue[key]);
             if(profile != null){
                 var deltaTime = Math.floor(Date.now() / 1000) - sk.getLastActivity(profile);
-                if(deltaTime > 30 && deltaTime < 5*minutes){
+                if(deltaTime > 5*minutes && deltaTime < 15*minutes){
                     whisperToy(toyQueue.splice(key, 1));
                 }else if(deltaTime > 1  && profile['userID'] == '75650015531372544'){
                     whisperToy(toyQueue.splice(key, 1));
