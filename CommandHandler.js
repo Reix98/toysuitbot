@@ -37,8 +37,7 @@ hasPendingCommand = function(userID){
 }
 
 getPendingCommand = function(userID){
-    var command = pendingCommands[userID];
-    return command;
+    return pendingCommands[userID];
 }
 
 handleCommand = function(user, userID, channelID, message, evt){
@@ -59,10 +58,10 @@ handleCommand = function(user, userID, channelID, message, evt){
     logger.info(cmd);
     logger.info(args);
     var context = {
-        user: user, 
-        userID: userID, 
-        channelID: channelID, 
-        message: message, 
+        user: user,
+        userID: userID,
+        channelID: channelID,
+        message: message,
         evt: evt
     };
 	var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
@@ -116,10 +115,10 @@ handleCommand = function(user, userID, channelID, message, evt){
         logger.info("!!!"+e);
         logger.info(e.stack);
     }
-	
+
 	//If the sender is suited, delete the command message.
 	//Otherwise, they could do something like "!gag HELP ME", and it would display...
-	if(userProfile != null && userProfile['mode'] == 'suited') {
+	if(userProfile != null && userProfile.isSuited()) {
 		discordBot.deleteMessage({
 			channelID: context.evt.d.channel_id,
 			messageID: context.evt.d.id
@@ -181,25 +180,25 @@ toysuit = function(profile, args, context){
 	if(args.length > 0) toyProfile = sessionKeeper.getProfileFromUserName(args[0], context.channelID);
 	else toyProfile = sessionKeeper.getProfileFromUserID(context.userID);
     if(toyProfile == null) throw "That user doesn't exist."
-    
+
 	var result = accessControl.attemptToysuit(userProfile, toyProfile);
     messageSender.sendMessage(context.channelID, result);
 }
 
 release = function(profile, args, context){
-    
+
     var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
 	var toyProfile;
 	if(args.length > 0) toyProfile = sessionKeeper.getProfileFromUserName(args[0], context.channelID);
 	else toyProfile = sessionKeeper.getProfileFromUserID(context.userID);
     if(toyProfile == null) throw "That user doesn't exist."
-	
+
 	var result = accessControl.canRelease(userProfile, toyProfile);
-	
+
     messageSender.sendMessage(context.channelID, result);
 	toyProfile['mode'] = 'unsuited';
 	sessionKeeper.updateProfile(toyProfile);
-	
+
     /*if(toyProfile['mode'] == "unsuited"){
         toyProfile['mode'] = "unsuited";
         toyProfile['ownerID'] = null;
@@ -241,9 +240,9 @@ free = function(profile, args, context){
     var toyProfile = sessionKeeper.getProfileFromUserName(args[0], context.channelID);
     var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
     if(toyProfile == null) throw "That user doesn't exist."
-	
+
 	var result = accessControl.canFree(userProfile, toyProfile);
-	
+
     messageSender.sendMessage(context.channelID, result);
 	sessionKeeper.deleteProfile(toyProfile);
 }
@@ -251,9 +250,9 @@ free = function(profile, args, context){
 safeword = function(profile, args, context){
     var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
     if(userProfile == null) throw "That user doesn't exist.";
-	
+
 	var result = accessControl.canSafeword(userProfile);
-	
+
     messageSender.sendMessage(context.channelID, result);
 	sessionKeeper.deleteProfile(userProfile);
 }
@@ -285,7 +284,7 @@ info = function(profile, args, context){
     if(userProfile == null) throw "That user doesn't exist."
 
     var info = "";
-    if(userProfile['mode'] == "suited"){
+    if(userProfile.isSuited()){
         info += getName(userProfile)+" is a toy. ";
         if(userProfile['ownerID'] == null) info += "They have no owner.";
         else info += "They are owned by " + getOwner(userProfile)['name'];
@@ -297,7 +296,7 @@ info = function(profile, args, context){
 setInfo = function(profile, args, context){
     if(args.length == 0) throw "Wrong number of arguments";
     var info;
-	
+
 	var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
 	var toyProfile = null;
 	if(args.length > 1) {
@@ -309,12 +308,12 @@ setInfo = function(profile, args, context){
 		info = args;
 	}
     if(toyProfile == null) throw "That user doesn't exist."
-    
+
 	var result = accessControl.canSetInfo(userProfile, toyProfile);
-	
+
     toyProfile['info'] = info.join(', ');
     sessionKeeper.updateProfile(toyProfile);
-	
+
     messageSender.sendMessage(context.channelID, result);
 }
 
@@ -335,7 +334,7 @@ kinks = function(profile, args, context){
 setKinks = function(profile, args, context){
     if(args.length == 0) throw "Wrong number of arguments";
     var kinks;
-	
+
 	var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
 	var toyProfile = null;
 	if(args.length > 1) {
@@ -347,12 +346,12 @@ setKinks = function(profile, args, context){
 		kinks = args;
 	}
     if(toyProfile == null) throw "That user doesn't exist."
-    
+
 	var result = accessControl.canSetKinks(userProfile, toyProfile);
-	
+
     toyProfile['kinks'] = kinks.join(', ');
     sessionKeeper.updateProfile(toyProfile);
-	
+
     messageSender.sendMessage(context.channelID, result);
 }
 
@@ -370,9 +369,9 @@ setNickname = function(profile, args, context){
         if(toyProfile == null) throw "That user doesn't exist.";
         nickname = args[1];
     }
-    
+
 	var result = accessControl.attemptSetNickname(userProfile, toyProfile, nickname);
-	
+
     messageSender.sendMessage(context.channelID, result);
 }
 
@@ -387,12 +386,12 @@ setTimer = function(profile, args, context){
     }else if(args.length == 2){
         targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
         if(targetProfile == null) throw "That user doesn't exist.";
-        if(targetProfile['ownerID'] != context.userID && 
+        if(targetProfile['ownerID'] != context.userID &&
             !(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
         ) throw "You do not own them"
         time = args[1];
     }
-    if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
+    if(!targetProfile.isSuited()) throw "Target not wearing a toysuit"
     if(sessionKeeper.getRemainingTimerSeconds(targetProfile) > 0) throw "Cannot edit existing suit timer"
 
     time = time.split(':');
@@ -420,11 +419,11 @@ timer = function(profile, args, context){
     var time;
     if(args.length == 0){
         targetProfile = sessionKeeper.getProfileFromUserID(context.userID);
-        if(targetProfile['mode'] == "unsuited") throw "Target not toysuited"
+        if(!targetProfile.isSuited()) throw "Target not toysuited"
     }else if(args.length == 1){
         targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
         if(targetProfile == null) throw "That user doesn't exist.";
-        if(targetProfile['mode'] == "unsuited") throw "Target not toysuited"
+        if(!targetProfile.isSuited()) throw "Target not toysuited"
     }
     time = sessionKeeper.getRemainingTimerSeconds(targetProfile);
 
@@ -446,15 +445,15 @@ clearTimer = function(profile, args, context) {
         targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
         if(targetProfile == null) throw "That user doesn't exist.";
     }
-	
+
 	var result = accessControl.canClearTimer(userProfile, targetProfile);
-	
+
 	targetProfile['suit timer bonus amount'] = null;
 	targetProfile['suit timer bonus count'] = 0;
 	targetProfile['suit timer'] = 0;
 	targetProfile['suit timestamp'] = 0;
 	sessionKeeper.updateProfile(targetProfile);
-	
+
 	messageSender.sendAction(context.channelID, result);
 };
 
@@ -469,33 +468,33 @@ setToyType = function(profile, args, context){
         userProfile = sessionKeeper.getProfileFromUserID(context.userID);
         if(targetProfile == null) throw "That user doesn't exist.";
         if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
-        if(userProfile['mode'] == "suited" && userProfile['toy mode'] == null) throw "Toys without a set type cannot set other toys' types"
+        if(userProfile.isSuited() && userProfile['toy mode'] == null) throw "Toys without a set type cannot set other toys' types"
         type = args[1];
     }
-    if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
+    if(!targetProfile.isSuited()) throw "Target not wearing a toysuit"
     if(targetProfile['toy mode'] != null && sessionKeeper.getRemainingTimerSeconds(targetProfile) > 0) throw "Cannot change toy type once timer is set"
 
     type = type.toLowerCase();
     switch(type){
         case("alpha"):
-            if(userProfile['mode'] == "suited") throw "Toys cannot create alpha toys"
+            if(userProfile.isSuited()) throw "Toys cannot create alpha toys"
             targetProfile['toy mode'] = "alpha";
 			messageSender.sendAction(context.channelID, sessionKeeper.getName(targetProfile)+" is now an alpha (α) toy!");
             break;
         case("beta"):
-            if(userProfile['mode'] == "suited" && userProfile['toy mode'] != "alpha") throw "Non-alpha toys cannot create beta toys"
+            if(userProfile.isSuited() && userProfile['toy mode'] != "alpha") throw "Non-alpha toys cannot create beta toys"
             targetProfile['toy mode'] = "beta";
 			messageSender.sendAction(context.channelID, sessionKeeper.getName(targetProfile)+" is now a beta (β) toy!");
             break;
         case("omega"):
-            if(userProfile['mode'] == "suited" && userProfile['toy mode'] == "omega") throw "Omega toys cannot create toys"
+            if(userProfile.isSuited() && userProfile['toy mode'] == "omega") throw "Omega toys cannot create toys"
             targetProfile['toy mode'] = "omega";
 			messageSender.sendAction(context.channelID, sessionKeeper.getName(targetProfile)+" is now an omega (ω) toy!");
             break;
     }
 
     sessionKeeper.updateProfile(targetProfile);
-	
+
 }
 
 toyType = function(profile, args, context){
@@ -505,11 +504,11 @@ toyType = function(profile, args, context){
     var time;
     if(args.length == 0){
         targetProfile = sessionKeeper.getProfileFromUserID(context.userID);
-        if(targetProfile['mode'] == "unsuited") throw "Target not toysuited"
+        if(!targetProfile.isSuited()) throw "Target not toysuited"
     }else if(args.length == 1){
         targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
         if(targetProfile == null) throw "That user doesn't exist.";
-        if(targetProfile['mode'] == "unsuited") throw "Target not toysuited"
+        if(!targetProfile.isSuited()) throw "Target not toysuited"
     }
     type = targetProfile['toy mode'];
     if(type == null) throw "Toy type not set"
@@ -530,10 +529,10 @@ setTimerBonus = function(profile, args, context){
     if(args.length != 2) throw "Wrong number of arguments";
     var targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
     if(targetProfile == null) throw "That user doesn't exist.";
-    if(targetProfile['ownerID'] != context.userID && 
+    if(targetProfile['ownerID'] != context.userID &&
         !(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
     ) throw "You do not own them"
-    if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
+    if(!targetProfile.isSuited()) throw "Target not wearing a toysuit"
     if(targetProfile['suit timer bonus amount'] != null) throw "Suit timer bonus already set"
 
     var time = args[1];
@@ -558,10 +557,10 @@ triggerBonus = function(profile, args, context){
     if(args.length != 1) throw "Wrong number of arguments";
     var targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
     if(targetProfile == null) throw "That user doesn't exist.";
-    if(targetProfile['ownerID'] != context.userID && 
+    if(targetProfile['ownerID'] != context.userID &&
         !(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
     ) throw "You do not own them"
-    if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
+    if(!targetProfile.isSuited()) throw "Target not wearing a toysuit"
 
     var bonusAmount = targetProfile['suit timer bonus amount'];
     targetProfile['suit timer bonus count']++;
@@ -576,10 +575,10 @@ control = function(profile, args, context, override){
     var targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
     if(targetProfile == null) throw "That user doesn't exist.";
     if(!override){
-        if(targetProfile['ownerID'] != context.userID && 
+        if(targetProfile['ownerID'] != context.userID &&
             !(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
         ) throw "You do not own them"
-        if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
+        if(!targetProfile.isSuited()) throw "Target not wearing a toysuit"
     }
 
     if(targetProfile['controlled']) targetProfile['controlled'] = false;
@@ -601,7 +600,7 @@ gag = function(profile, args, context){
     var targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
     if(targetProfile == null) throw "That user doesn't exist.";
     if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
-    if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
+    if(!targetProfile.isSuited()) throw "Target not wearing a toysuit"
 
     if(targetProfile['gagged']) targetProfile['gagged'] = false;
     else targetProfile['gagged'] = true;
@@ -635,16 +634,16 @@ say = function(profile, args, context){
     args.splice(0, 1);
     var message = args.join(", ");
     if(targetProfile == null) throw "That user doesn't exist.";
-    if(targetProfile['ownerID'] != context.userID && 
+    if(targetProfile['ownerID'] != context.userID &&
         !(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
     ) throw "You do not own them"
-    if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
-    
+    if(!targetProfile.isSuited()) throw "Target not wearing a toysuit"
+
     var syncLevel = sk.getSyncLevel(targetProfile);
     var sync = Math.max(-99, Math.min(100, Math.round(syncLevel)))+"%";
     while(sync.length<4) sync = " "+sync;
     sync = "`"+sk.getToyTypeSymbol(targetProfile)+"["+sync+"]`";
-    
+
     messageSender.sendMessage(profile['lastChannelID'], sync + "**" + getName(targetProfile) + "**: " + "__"+message+"__");
 }
 
@@ -655,11 +654,11 @@ voice = function(profile, args, context){
     args.splice(0, 1);
     var message = args.join(", ");
     if(targetProfile == null) throw "That user doesn't exist.";
-    if(targetProfile['ownerID'] != context.userID && 
+    if(targetProfile['ownerID'] != context.userID &&
         !(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
     ) throw "You do not own them"
-    if(targetProfile['mode'] == "unsuited") throw "Target not wearing a toysuit"
-    
+    if(!targetProfile.isSuited()) throw "Target not wearing a toysuit"
+
     messageSender.sendMessage(targetProfile['userID'], "**Toysuit**: " + "*"+message+"*");
 }
 

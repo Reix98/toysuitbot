@@ -1,110 +1,54 @@
-var fs = require('fs');
-var regression = require('regression');
+const fs = require('fs');
+const regression = require('regression');
+const profiles = require('./classes/UserProfile');
 
 var logger;
 var discordBot;
 
 //var sessions = {};
 var profileCache = {};
-
-
-var TemplateProfile = null;
-
-function UserProfile(props) {
-	
-	props = props || {};
-	
-	var profile = this;
-	profile['userID'] = null;
-    profile['name'] = null;
-	profile['discriminator'] = null;
-    profile['nickname'] = null;
-    profile['lastChannelID'] = null;
-    profile['str'] = 2; //str;
-    profile['res'] = 2; //res;
-    profile['wil'] = 2; //wil;
-    profile['controlled'] = false;
-    profile['gagged'] = false;
-    profile['mode'] = "unsuited";
-    profile['suit timestamp'] = 0;
-    profile['suit timer'] = 0;
-    profile['suit timer bonus count'] = 0;
-    profile['suit timer bonus amount'] = null;
-    profile['ownerID'] = null;
-    profile['info'] = "[Info not set]";
-    profile['kinks'] = "[Kinks not set]";
-    profile['toy mode'] = null;
-	profile['beta access list'] = [];
-    profile['can safeword'] = true;
-    profile['sync level'] = 0;
-    profile['sync level history'] = [];
-    profile['parens allowed'] = true;
-    profile['sync state'] = 0;
-    profile['last activity'] = 0;
-	
-	for(var prop in props) {
-		this[prop] = props[prop];
-	}
-}
-
-UserProfile.prototype.differenceFromTemplate = function(includeID) {
-	var diff = {};
-	for(var prop in TemplateProfile) {
-		if(!includeID && (prop == 'userID' || prop == 'name' || prop == 'discriminator')) continue;
-		if(typeof this[prop] == 'function') continue;
-		if(typeof this[prop] == 'object') {
-			try {
-				if(JSON.stringify(this[prop]) != JSON.stringify(TemplateProfile[prop])) diff[prop] = this[prop];
-			}catch(e){
-				//If it's gonna crash the JSON stringifier, we can't save it anyway, so...
-			}
-		}else if(this[prop] != TemplateProfile[prop]) diff[prop] = this[prop];
-	}
-	
-	return diff;
-}
-
-TemplateProfile = new UserProfile();
+const TemplateProfile = new profiles.UserProfile(undefined);
 
 init = function(log, bot){
     logger = log;
 	discordBot = bot;
-	
+
 	if(!fs.existsSync('profiles')) {
 		logger.info('No profiles folder exists. Creating one now...');
 		fs.mkdirSync('profiles');
 	}
-	
+
 	var proFiles = fs.readdirSync('profiles');
-	
+
 	for(var i = 0, l = proFiles.length; i < l; i++) {
 		var file = proFiles[i];
 		var insensitive = file.toLowerCase();
 		if(!insensitive.startsWith('profile-') || !insensitive.endsWith('.json')) continue;
-		
+
 		//Remove 'profile-' prefix and '.json' suffix.
 		var profName = file.substr(8);
 		profName = profName.substr(0, profName.length-5);
 		try {
-			var newProf = new UserProfile(JSON.parse(fs.readFileSync('profiles/'+file)));
+			var newProf = new profiles.UserProfile(JSON.parse(fs.readFileSync('profiles/'+file)));
 			profileCache[profName] = newProf;
 		}catch(e) {
 			logger.error('Couldn\'t load profile "'+file+'" because it is inaccessible or corrupted:',e);
 		}
 	}
-	
+
 	var users = discordBot.users;
-	
+
 	for(var key in users) {
 		var user = users[key];
 		if(user.bot) continue;
-		if(!profileCache.hasOwnProperty(user.id)) profileCache[user.id] = new UserProfile();
+		if(!profileCache.hasOwnProperty(user.id))
+		    profileCache[user.id] = new profiles.UserProfile();
 		var prof = profileCache[user.id];
 		prof['userID'] = user.id;
 		prof['name'] = user.username;
 		prof['discriminator'] = user.discriminator;
 	}
-	
+
     //var sessionCount = getSessionCount();
     //var toyList = getToyList();
     //logger.info("There are currently "+sessionCount+" sessions in storage:");
@@ -136,9 +80,9 @@ writeProfileToDisk = function(userID) {
 getProfileFromUserID = function(userID){
     //logger.info("getProfileFromUserID("+userID+")");
     var profile = profileCache[userID];
-    
+
 	if(profile) return profile;
-	
+
     //There is no user profile.
 	//Create one.
 	return createProfileFromUserID(userID);
@@ -171,19 +115,19 @@ getLastActivity = function(profile){
 }
 
 createProfileFromUserID = function(userID){
-	
+
 	var users = discordBot.users;
-	
+
 	if(!users.hasOwnProperty(userID)) {
 		//logger.error('User ID "'+userID+'" does not exist, but was passed to createProfileFromUserID?');
 		//console.trace("DEBUG: Stack trace for bad createProfileFromUserID call:");
 		return null;
 	}
-	
+
 	var user = users[userID];
 	var name = user.username;
-	
-    var profile = new UserProfile();
+
+    var profile = new profiles.UserProfile();
     profile['userID'] = userID;
     profile['name'] = name;
 	profile['discriminator'] = user.discriminator;
@@ -194,35 +138,35 @@ createProfileFromUserID = function(userID){
 
 createProfileFromUsername = function(username) {
 	var users = discordBot.users;
-	
+
 	for(var i = 0, l = users.length; i < l; i++) {
 		var user = users[i];
 		if(username && (user.username.toLowerCase().trim() == username.toLowerCase().trim() || ('<@'+user.id+'>' == username))) {
 			return createProfileFromUserID(user.id);
 		}
 	}
-	
+
 	return null; //Couldn't find that username.
 }
 
 deleteProfile = function(profileOrUserID) {
-	
+
 	var uid;
-	
+
 	if(typeof profileOrUserID === 'object' && profileOrUserID && profileOrUserID.userID) uid = profileOrUserID.userID;
 	else uid = profileOrUserID;
-	
+
 	delete profileCache[uid];
-	
+
 	try{
 		fs.unlinkSync('profiles/profile-'+uid+'.json');
 	}catch(e){}
-	
+
 	createProfileFromUserID(uid);
 }
 
 getName = function(profile){
-    if(!profile['nickname'] || profile['mode'] != 'suited') return profile['name'];
+    if(!profile['nickname'] || !profile.isSuited()) return profile['name'];
     else return profile['nickname'];
 }
 
@@ -406,4 +350,3 @@ module.exports = {
     updateSyncState: updateSyncState,
     getLastActivity: getLastActivity
 }
-

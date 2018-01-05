@@ -111,7 +111,7 @@ whisperToys = function(){
 
 whisperToy = function(userID){
     var profile = sk.getProfileFromUserID(userID);
-    if(profile['mode'] == "suited"){ //They could have unsuited since we last checked
+    if(profile.isSuited()){ //They could have unsuited since we last checked
         console.log("---------whisperToy: "+profile['name']);
         var trend = sk.getSyncLevelTrend(profile, 5);
         var toyType = sk.getToyType(profile);
