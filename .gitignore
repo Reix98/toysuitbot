@@ -7,3 +7,5 @@ profiles/
 profiles*/
 package-lock.json
 wordcloud/data/
+
+.idea/
