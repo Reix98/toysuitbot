@@ -133,27 +133,25 @@ bot.on('messageUpdate', function(oldMsg, newMsg) {
 });
 
 bot.on('message', function (user, userID, channelID, message, evt) {
-    if(userID ==bot.id){
-        //Bot Message - Ignore it.
-    }else if (message.substring(0, 1) == '!') {
-        //User Command.
-        ch.handleCommand(user, userID, channelID, message, evt);
-    }else{
-        //User Message.
+    try{
         if(userID == bot.id){
-            //Just the bot's own message.
-        }else{
-            try{
-                mh.handleMessage(user, userID, channelID, message, evt);
-            }catch(e){
-                console.log(e);
-            }
+            return; // Ignore bot messages
         }
-    }
+        
+        if (message.substring(0, 1) == '!') {
+            //User Command.
+            ch.handleCommand(user, userID, channelID, message, evt);
+        }else{
+            //User Message.
+            mh.handleMessage(user, userID, channelID, message, evt);
+        }
 
-    var userProfile = sk.getProfileFromUserID(userID);
-    if(userProfile['mode'] == "suited"){
-        userProfile['last activity'] = Math.floor(Date.now() / 1000);
-        tw.queueToy(userProfile);
+        var userProfile = sk.getProfileFromUserID(userID);
+        if(userProfile['mode'] == "suited"){
+            userProfile['last activity'] = Math.floor(Date.now() / 1000);
+            tw.queueToy(userProfile);
+        }
+    }catch(exception){
+        logger.error(exception);
     }
 });
