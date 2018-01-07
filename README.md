@@ -36,6 +36,20 @@ This is a node module that contains a toy suit application for your Discord serv
 | `!me <action>`                                  | You doing something                                  |
 For more information on what these states mean please consult the wiki.
 
+### The system
+Users are grouped in two types. Doms and subs (the toys). A dom can not be toy suited and the toys are divided into tree
+different groups.
+* Alpha (α) = Dominant
+* Beta (β)  = Switch
+* Omega (ω) = Submissive
+
+This ranking also effects who can toy suit who. An alpha toy can toysuit every other toy category where as omegas
+ can not toy suit any other group.
+
+Furthermore every toy has a score. Like `α\[12%\]` this means that the toy is a 12% good toy. Negative amounts mean that
+the toy is behaving bad. The score of the toy affects how the toy suit reacts to the wearer. For example a bad toy has a
+higher chance of the toy suit replacing words. 
+
 ## For developers
 If you want to help with the development of this bot, just fork and clone this repository. In order to also set up your own discord server for testing, follow these steps.
 
