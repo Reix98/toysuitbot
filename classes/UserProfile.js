@@ -32,8 +32,17 @@ function UserProfile(props) {
     profile['sync state'] = 0;
     profile['last activity'] = 0;
 
-    for(index in props)
-        this[index] = property;
+    for(var prop in props) {
+        this[prop] = props[prop];
+    }
+}
+
+UserProfile.prototype.getName = function () {
+    if (!this['nickname'] || !this.isSuited()) {
+        return this['name']; // The real name
+    }
+
+    return this['nickname']; // The toy name
 }
 
 UserProfile.prototype.isSuited = function () {
@@ -68,11 +77,15 @@ UserProfile.prototype.differenceFromTemplate = function (includeID) {
     return diff;
 };
 
-UserProfile.prototype.getLastActivity = function(){
+UserProfile.prototype.getLastActivity = function () {
     var lastActivity = this['last activity'];
 
     return lastActivity ? lastActivity : 0;
 };
+
+UserProfile.prototype.getToyType = function () {
+    return this['toy mode'];
+}
 
 module.exports = {
     UserProfile: UserProfile

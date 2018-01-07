@@ -268,7 +268,7 @@ removeSafeword = function(profile, args, context){
             profile['can safeword'] = false;
             sessionKeeper.updateProfile(profile);
             messageSender.sendMessage(profile['userID'], "Very well toy. You're mine now.");
-            messageSender.sendMessage(profile['lastChannelID'], getName(userProfile)+" has removed their safeword. What a good toy.");
+            messageSender.sendMessage(profile['lastChannelID'], userProfile.getName()+" has removed their safeword. What a good toy.");
         }
     }
 }
@@ -285,7 +285,7 @@ info = function(profile, args, context){
 
     var info = "";
     if(userProfile.isSuited()){
-        info += getName(userProfile)+" is a toy. ";
+        info += userProfile.getName()+" is a toy. ";
         if(userProfile['ownerID'] == null) info += "They have no owner.";
         else info += "They are owned by " + getOwner(userProfile)['name'];
     }
@@ -431,7 +431,7 @@ timer = function(profile, args, context){
         time = 0;
     }
 
-    messageSender.sendAction(context.channelID, getName(targetProfile)+"'s timer reads: \n"+sessionKeeper.readableTime(time));
+    messageSender.sendAction(context.channelID, targetProfile.getName()+"'s timer reads: \n"+sessionKeeper.readableTime(time));
 }
 
 clearTimer = function(profile, args, context) {
@@ -479,17 +479,17 @@ setToyType = function(profile, args, context){
         case("alpha"):
             if(userProfile.isSuited()) throw "Toys cannot create alpha toys"
             targetProfile['toy mode'] = "alpha";
-			messageSender.sendAction(context.channelID, sessionKeeper.getName(targetProfile)+" is now an alpha (α) toy!");
+			messageSender.sendAction(context.channelID, targetProfile.getName()+" is now an alpha (α) toy!");
             break;
         case("beta"):
             if(userProfile.isSuited() && userProfile['toy mode'] != "alpha") throw "Non-alpha toys cannot create beta toys"
             targetProfile['toy mode'] = "beta";
-			messageSender.sendAction(context.channelID, sessionKeeper.getName(targetProfile)+" is now a beta (β) toy!");
+			messageSender.sendAction(context.channelID, targetProfile.getName()+" is now a beta (β) toy!");
             break;
         case("omega"):
             if(userProfile.isSuited() && userProfile['toy mode'] == "omega") throw "Omega toys cannot create toys"
             targetProfile['toy mode'] = "omega";
-			messageSender.sendAction(context.channelID, sessionKeeper.getName(targetProfile)+" is now an omega (ω) toy!");
+			messageSender.sendAction(context.channelID, targetProfile.getName()+" is now an omega (ω) toy!");
             break;
     }
 
@@ -521,7 +521,7 @@ toyType = function(profile, args, context){
         case("omega"): typeText = "an omega (ω) toy"; break;
     }
 
-    messageSender.sendAction(context.channelID, getName(targetProfile)+" is "+typeText+".");
+    messageSender.sendAction(context.channelID, targetProfile.getName()+" is "+typeText+".");
 }
 
 setTimerBonus = function(profile, args, context){
@@ -549,7 +549,7 @@ setTimerBonus = function(profile, args, context){
     timeAmt = Math.min(60*30, timeAmt);
     targetProfile['suit timer bonus amount'] = timeAmt;
     sessionKeeper.updateProfile(targetProfile);
-    messageSender.sendAction(context.channelID, getName(targetProfile)+"'s timer bonus was set to "+sessionKeeper.readableTime(timeAmt));
+    messageSender.sendAction(context.channelID, targetProfile.getName()+"'s timer bonus was set to "+sessionKeeper.readableTime(timeAmt));
 }
 
 triggerBonus = function(profile, args, context){
@@ -566,7 +566,7 @@ triggerBonus = function(profile, args, context){
     targetProfile['suit timer bonus count']++;
     targetProfile['suit timer'] += targetProfile['suit timer bonus amount'];
     sessionKeeper.updateProfile(targetProfile);
-    messageSender.sendAction(context.channelID, getName(targetProfile)+"'s timer bonus was triggered, adding "+sessionKeeper.readableTime(bonusAmount)+" to their timer.");
+    messageSender.sendAction(context.channelID, targetProfile.getName()+"'s timer bonus was triggered, adding "+sessionKeeper.readableTime(bonusAmount)+" to their timer.");
 }
 
 control = function(profile, args, context, override){
@@ -586,10 +586,10 @@ control = function(profile, args, context, override){
 
     sessionKeeper.updateProfile(targetProfile);
     if(targetProfile['controlled']){
-        messageSender.sendAction(context.channelID, getName(targetProfile)+"'s suit has taken full control of their body.");
+        messageSender.sendAction(context.channelID, targetProfile.getName()+"'s suit has taken full control of their body.");
         messageSender.sendAction(targetProfile['userID'], 'You feel the suit take full control of your body.');
     }else{
-        messageSender.sendAction(context.channelID, getName(targetProfile)+"'s suit has relaxed control of their body.");
+        messageSender.sendAction(context.channelID, targetProfile.getName()+"'s suit has relaxed control of their body.");
         messageSender.sendAction(targetProfile['userID'], 'You feel the suit relax control of your body.');
     }
 }
@@ -606,24 +606,26 @@ gag = function(profile, args, context){
     else targetProfile['gagged'] = true;
 
     sessionKeeper.updateProfile(targetProfile);
+    var targetProfileName = targetProfile.getName();
+
     if(targetProfile['gagged']){
         if(sk.getSyncState(targetProfile) == -2){
-            messageSender.sendAction(context.channelID, getName(targetProfile)+" is already gagged by their toysuit.");
+            messageSender.sendAction(context.channelID, targetProfileName +" is already gagged by their toysuit.");
         }else{
-            messageSender.sendAction(context.channelID, getName(targetProfile)+"'s gag swells, leaving its mouth usable only as a hole to fuck.");
+            messageSender.sendAction(context.channelID, targetProfileName +"'s gag swells, leaving its mouth usable only as a hole to fuck.");
         }
     }else{
         if(sk.getSyncState(targetProfile) == -2){
-            messageSender.sendAction(context.channelID, getName(targetProfile)+"'s gag would have deflated if their suit would allow it.");
+            messageSender.sendAction(context.channelID, targetProfileName +"'s gag would have deflated if their suit would allow it.");
         }else{
-            messageSender.sendAction(context.channelID, getName(targetProfile)+"'s gag deflates, allowing it to talk again.");
+            messageSender.sendAction(context.channelID, targetProfileName +"'s gag deflates, allowing it to talk again.");
         }
     }
 }
 
 me = function(profile, args, context){
     args = args.join(', ');
-    var message = '```' + getName(profile) + ' ' + args.trim() + '```';
+    var message = '```' + profile.getName() + ' ' + args.trim() + '```';
     messageSender.sendMessage(context.channelID, message);
 }
 
@@ -644,7 +646,7 @@ say = function(profile, args, context){
     while(sync.length<4) sync = " "+sync;
     sync = "`"+sk.getToyTypeSymbol(targetProfile)+"["+sync+"]`";
 
-    messageSender.sendMessage(profile['lastChannelID'], sync + "**" + getName(targetProfile) + "**: " + "__"+message+"__");
+    messageSender.sendMessage(profile['lastChannelID'], sync + "**" + targetProfile.getName() + "**: " + "__"+message+"__");
 }
 
 voice = function(profile, args, context){

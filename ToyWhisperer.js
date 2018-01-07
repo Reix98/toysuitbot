@@ -115,9 +115,9 @@ whisperToy = function(userID){
     var profile = sk.getProfileFromUserID(userID);
 
     if(profile.isSuited()){ //They could have unsuited since we last checked
-        console.log("---------whisperToy: "+profile['name']);
+        console.log("---------whisperToy: "+profile.getName());
         var trend = sk.getSyncLevelTrend(profile, 5);
-        var toyType = sk.getToyType(profile);
+        var toyType = profile.getToyType();
 
         var syncLevel = sk.getSyncLevel(profile);
         var syncText = Math.max(-99, Math.min(100, Math.round(syncLevel)))+"%";
@@ -132,7 +132,7 @@ whisperToy = function(userID){
         var toyID = profile.userID;
         var options = [];
         var optionActions = [];
-        var msgPrefix = syncText + "**" + sk.getName(profile) + "**: ";
+        var msgPrefix = syncText + "**" + profile.getName() + "**: ";
         var lastChannelID = profile['lastChannelID'];
 
 

@@ -160,11 +160,6 @@ deleteProfile = function(profileOrUserID) {
 	createProfileFromUserID(uid);
 }
 
-getName = function(profile){
-    if(!profile['nickname'] || !profile.isSuited()) return profile['name'];
-    else return profile['nickname'];
-}
-
 getSyncLevel = function(profile){
     var sync = profile['sync level'];
     if(sync != undefined && sync != null){
@@ -199,7 +194,7 @@ getSyncLevelTrend = function(profile, time){
     var prediction = result.predict(1)[1];
     var trend = prediction - profile['sync level'];
     //console.log(prediction + " (" + trend + ")");
-    if(trend == "NaN") return 0;
+    if(isNaN(trend)) return 0;
     return trend;
 }
 
@@ -247,17 +242,6 @@ updateSyncState = function(profile){
 getOwner = function(profile){
     if(!profile['ownerID']) return null;
     return getProfileFromUserID(profile['ownerID']);
-}
-
-getToyType = function(profile, exclusive){
-    if(exclusive){
-        var type = profile['toy mode'];
-        if(type == "alpha") return "alpha";
-        if(type == "beta")  return "beta";
-        if(type == "omega") return "omega";
-        return "beta";
-    }
-    return profile['toy mode'];
 }
 
 getToyTypeSymbol = function(profile){
@@ -332,9 +316,7 @@ module.exports = {
     updateProfile: updateProfile,
 	deleteProfile: deleteProfile,
     getRemainingTimerSeconds: getRemainingTimerSeconds,
-    getName: getName,
     getOwner: getOwner,
-    getToyType: getToyType,
     getToyTypeSymbol: getToyTypeSymbol,
     getNextLowestToyType: getNextLowestToyType,
     readableTime: readableTime,

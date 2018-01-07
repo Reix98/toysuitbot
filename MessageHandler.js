@@ -70,7 +70,7 @@ handleMessage = function(user, userID, channelID, message, evt){
             var text = message;
             if(text.indexOf("[")>-1)
                 text = text.substring(0, text.indexOf("["));
-            var toyType = sk.getToyType(userProfile);
+            var toyType = userProfile.getToyType();
             var toyBrainData = toyBrain.evaluate(text, toyType);
             console.log(toyBrainData);
 
