@@ -57,6 +57,7 @@ UserProfile.prototype.differenceFromTemplate = function (includeID) {
                     diff[prop] = this[prop];
                 }
             } catch (e) {
+                console.log('[ERROR]: Could not save stringifier profile');
                 //If it's gonna crash the JSON stringifier, we can't save it anyway, so...
             }
         } else if (this[prop] != TemplateProfile[prop]) {
@@ -65,6 +66,12 @@ UserProfile.prototype.differenceFromTemplate = function (includeID) {
     }
 
     return diff;
+};
+
+UserProfile.prototype.getLastActivity = function(){
+    var lastActivity = this['last activity'];
+
+    return lastActivity ? lastActivity : 0;
 };
 
 module.exports = {

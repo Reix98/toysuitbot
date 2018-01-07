@@ -124,7 +124,7 @@ bot.on('messageUpdate', function(oldMsg, newMsg) {
 	}
 	
 	var author = sk.getProfileFromUserID(authorId);
-	if(author != null && author['mode'] == 'suited') {
+	if(author != null && author.isSuited()) {
 		bot.deleteMessage({
 			channelID: newMsg.channel_id,
 			messageID: newMsg.id
@@ -147,11 +147,12 @@ bot.on('message', function (user, userID, channelID, message, evt) {
         }
 
         var userProfile = sk.getProfileFromUserID(userID);
-        if(userProfile['mode'] == "suited"){
+        if(userProfile.isSuited()){
             userProfile['last activity'] = Math.floor(Date.now() / 1000);
             tw.queueToy(userProfile);
         }
     }catch(exception){
         logger.error(exception);
     }
+
 });

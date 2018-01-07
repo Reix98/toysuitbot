@@ -109,11 +109,6 @@ getProfileFromUserName = function(username){
     return createProfileFromUsername(username);
 }
 
-getLastActivity = function(profile){
-    if(profile['last activity'] == null) return 0;
-    return profile['last activity'];
-}
-
 createProfileFromUserID = function(userID){
 
 	var users = discordBot.users;
@@ -347,6 +342,5 @@ module.exports = {
     getSyncLevelTrend: getSyncLevelTrend,
     changeSyncLevel: changeSyncLevel,
     getSyncState: getSyncState,
-    updateSyncState: updateSyncState,
-    getLastActivity: getLastActivity
+    updateSyncState: updateSyncState
 }

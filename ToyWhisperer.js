@@ -94,16 +94,18 @@ queueToy = function(profile){
 }
 
 whisperToys = function(){
-    if(toyQueue.length > 0){
-        for(key in toyQueue){
-            var profile = sk.getProfileFromUserID(toyQueue[key]);
-            if(profile != null){
-                var deltaTime = Math.floor(Date.now() / 1000) - sk.getLastActivity(profile);
-                if(deltaTime > 30 && deltaTime < 5*minutes){
-                    whisperToy(toyQueue.splice(key, 1));
-                }else if(deltaTime > 1  && profile['userID'] == '75650015531372544'){
-                    whisperToy(toyQueue.splice(key, 1));
-                }
+    if(toyQueue.length === 0) {
+        return; // No user is a toy
+    }
+
+    for(key in toyQueue){
+        var profile = sk.getProfileFromUserID(toyQueue[key]);
+        if(profile != null){
+            var deltaTime = Math.floor(Date.now() / 1000) - profile.getLastActivity();
+            if(deltaTime > 30 && deltaTime < 5*minutes){
+                whisperToy(toyQueue.splice(key, 1));
+            }else if(deltaTime > 1  && profile['userID'] == '75650015531372544'){
+                whisperToy(toyQueue.splice(key, 1));
             }
         }
     }
@@ -111,6 +113,7 @@ whisperToys = function(){
 
 whisperToy = function(userID){
     var profile = sk.getProfileFromUserID(userID);
+
     if(profile.isSuited()){ //They could have unsuited since we last checked
         console.log("---------whisperToy: "+profile['name']);
         var trend = sk.getSyncLevelTrend(profile, 5);
@@ -184,10 +187,10 @@ whisperToy = function(userID){
         if(optionIndex != null){
             lockOption(userID, optionIndex, 10*minutes);
             //console.log(optionIndex);
-    
+
             var actions = optionActions[optionIndex];
             //console.log(actions);
-    
+
             //debug(userID, 'test2');
             for(key in actions){
                 //debug(userID, 'test3');
