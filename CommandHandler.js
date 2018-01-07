@@ -106,7 +106,7 @@ handleCommand = function(user, userID, channelID, message, evt){
             case('!debug'): debug(profile, args, context); break;
             case('!me'): me(profile, args, context); break;
 			case('!setowner'):
-			case('!set_owner'): setClaimable(profile, args, context); break;
+			case('!set_owner'): setOwner(profile, args, context); break;
 			case('!help'): helpMe(profile, args, context); break;
 			//It's not a valid command.
 			//Remove the '!' prefix and send it back into the parser.
