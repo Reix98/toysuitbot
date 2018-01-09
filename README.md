@@ -34,6 +34,7 @@ This is a node module that contains a toy suit application for your Discord serv
 | `!say <username>, <message>`                    | Make the toy suit say something as the toy           |
 | `!voice <username>, <message>`                  | Make the toy suit emmit a voice to the toy           |
 | `!me <action>`                                  | You doing something                                  |
+
 For more information on what these states mean please consult the wiki.
 
 ### The system
@@ -46,7 +47,7 @@ different groups.
 This ranking also effects who can toy suit who. An alpha toy can toysuit every other toy category where as omegas
  can not toy suit any other group.
 
-Furthermore every toy has a score. Like `α\[12%\]` this means that the toy is a 12% good toy. Negative amounts mean that
+Furthermore every toy has a score. Like `α[12%]` this means that the toy is a 12% good toy. Negative amounts mean that
 the toy is behaving bad. The score of the toy affects how the toy suit reacts to the wearer. For example a bad toy has a
 higher chance of the toy suit replacing words. 
 
