@@ -17,17 +17,17 @@ init = function(log, sk, ms){
 getRecursiveOwners = function(toyProfile) {
 	var nextOwner = toyProfile['ownerID'];
 	var out = [];
-
+	
 	while(nextOwner != null) {
 		//Keep recursively-looped owners from breaking everything.
 		if(out.indexOf(nextOwner) >= 0) break;
-
+		
 		out.push(nextOwner);
 		var nextOwnerProfile = sk.getProfileFromUserID(nextOwner);
 		if(nextOwnerProfile != null && nextOwnerProfile['ownerID'] != null) nextOwner = nextOwnerProfile['ownerID'];
 		else nextOwner = null;
 	}
-
+	
 	return out;
 }
 
@@ -39,16 +39,16 @@ getRecursiveOwners = function(toyProfile) {
 canControlType = function(userProfile, toyProfile) {
 	var userType = userProfile.getToyMode();
 	var toyType = toyProfile['toy mode'];
-
+	
 	//Dominants and alphas can control everything. So can typeless toys.
 	if(userType == 'dom' || userType == 'alpha' || userType == null) return true;
-
+	
 	//Betas can't control alphas.
 	if(userType == 'beta' && toyType == 'alpha') return false;
-
+	
 	//Omegas can only control omegas.
 	if(userType == 'omega' && toyType != 'omega') return false;
-
+	
 	//Should be okay, then.
 	return true;
 }
@@ -61,7 +61,7 @@ canControlType = function(userProfile, toyProfile) {
 attemptToysuit = function(userProfile, toyProfile) {
 	var userID = userProfile['userID'];
 	var toyID = toyProfile['userID'];
-
+	
 	//Dominants can never be toysuited.
 	if(toyProfile['toy mode'] == 'dom') {
 		throw "Dominants can't be made into toys.";
@@ -70,7 +70,7 @@ attemptToysuit = function(userProfile, toyProfile) {
 	if(toyProfile.isSuited()) {
 		throw toyProfile.getName()+" is already in its toysuit!";
 	}
-
+	
 	//Is the user an owner? Or are there no owners at all?
 	//If the wearer is a beta, how about the whitelist?
 	//If the wearer is an omega, anyone can toysuit them at any time.
@@ -86,11 +86,11 @@ attemptToysuit = function(userProfile, toyProfile) {
 			var userProfileName =userProfile.getName();
 			throw userProfileName +" attempted to toysuit "+toyProfile.getName()+", but "+userProfileName+" is a lower toy type!";
 		}
-
+		
 		//If we got here, the toysuiting will succeed!
 		//Set the owner if one isn't set.
 		if(toyOwners.length < 1) toyProfile['ownerID'] = userID;
-
+		
 		//Into the suit you go!
 		toyProfile['mode'] = "suited";
         if(toyID != userID || toyProfile['toy mode'] == null) {
@@ -100,20 +100,16 @@ attemptToysuit = function(userProfile, toyProfile) {
         toyProfile['suit timer bonus count'] = 0;
         toyProfile['suit timer'] = 0;
         toyProfile['suit timestamp'] = 0;
-        toyProfile['controlled'] = false;
-        toyProfile['gagged'] = false;
-
+        toyProfile.controlled = false;
+        toyProfile.gagged = false;
+		
 		sessionKeeper.updateProfile(toyProfile);
 
-		var toyName = toyProfile.getName()
-		if(userID == toyID) {
-			return toyName +" has put on its toysuit!";
-		}
-		else {
-			return toyName +" has been toysuited by "+userProfile.getName()+'!';
-		}
+		var toyName = toyProfile.getName();
+		if(userID == toyID) return toyName +" has put on its toysuit!";
+		else return toyName +" has been toysuited by "+userProfile.getName()+'!';
 	}
-
+	
 	throw userProfile.getName()+" attempted to toysuit "+toyProfile.getName()+", but " + (userProfile.isSuited() ? "it didn't" : "they don't") + " have access!";
 }
 
@@ -133,19 +129,19 @@ canClearTimer = function(userProfile, toyProfile) {
 	if(!toyProfile.isSuited() || sessionKeeper.getRemainingTimerSeconds(toyProfile)<=0) {
 		throw userName+" attempted to clear the timer on "+toyName+", but no timer is active!";
 	}
-
+	
 	var time = sessionKeeper.readableTime(sessionKeeper.getRemainingTimerSeconds(toyProfile));
-
+	
 	//Toys can never clear their own timers, even if they're their only owner.
 	if(userID == toyID) {
 		throw toyName + " attempted to clear its own timer, but it still reads '" + time + "'...";
 	}
-
+	
 	//Only owners can clear a timer.
 	if(toyOwners.indexOf(userID) < 0) {
 		throw userName + " attempted to clear the timer for " + toyName + ", but only an owner can do this! It still reads '" + time + "'...";
 	}
-
+	
 	//It should be allowed, then.
 	return userName + " cleared the timer for " + toyName + "!";
 }
@@ -155,7 +151,7 @@ canClearTimer = function(userProfile, toyProfile) {
 //Returns a flavor-text string to output if release succeeds, or throws an error string on failure.
 //Author: dawnmew
 canRelease = function(userProfile, toyProfile) {
-
+	
 	var userID = userProfile['userID'];
 	var toyID = toyProfile['userID'];
 	var toyOwners = getRecursiveOwners(toyProfile);
@@ -166,53 +162,41 @@ canRelease = function(userProfile, toyProfile) {
 	if(!toyProfile.isSuited()) {
 		throw toyName+" is already released from the toysuit!";
 	}
-
+	
 	//An active timer always prevents release.
 	if(sessionKeeper.getRemainingTimerSeconds(toyProfile)>0) {
 		var time = sessionKeeper.readableTime(sessionKeeper.getRemainingTimerSeconds(toyProfile));
 
-		if(userID == toyID) {
-			throw toyName+" attempts to release itself, but its timer still reads '"+time+"'.";
-		}
-		else {
-			throw userProfile+" attempts to release "+toyName+", but its timer still reads '"+time+"'.";
-		}
+		if(userID == toyID)  throw toyName+" attempts to release itself, but its timer still reads '"+time+"'.";
+		else throw userProfile+" attempts to release "+toyName+", but its timer still reads '"+time+"'.";
 	}
-
+	
 	//An owner is releasing the toy - always allowed.
 	if(toyOwners.indexOf(userID) >= 0) {
-		if(userID == toyID) {
-			return toyName +" released themselves from the toysuit.";
-		}
+		if(userID == toyID) return toyName +" released themselves from the toysuit.";
 		else return toyName+" has been released from the toysuit by "+userName+".";
 	}
-
+	
 	//Toy is attempting to release itself, and is an alpha, so is allowed.
 	if(userID == toyProfile['userID'] && toyProfile['toy mode'] == 'alpha') {
 		return toyName +" released themselves from the toysuit.";
 	}
-
+	
 	//Check the access whitelist for beta toys.
 	if(toyProfile['toy mode'] == 'beta') {
 		var whitelist = toyProfile['beta access list'] || [];
-
+		
 		//Is the user whitelisted?
 		if(whitelist.indexOf(userID) >= 0) {
 			//User is whitelisted, and therefore allowed to release the toy.
-			if(userID == toyID) {
-				return toyName+" released themselves from the toysuit.";
-			}
-			else {
-				return toyName+" has been released from the toysuit by "+userName+".";
-			}
+			if(userID == toyID) return toyName+" released themselves from the toysuit.";
+			else return toyName+" has been released from the toysuit by "+userName+".";
 		}
 	}
-
+	
 	//If they got here, they aren't allowed. Are they the toy?
-	if(toyID == userID) {
-		throw toyName+" tried to release itself from the toysuit, but it's no use...";
-	}
-
+	if(toyID == userID) throw toyName+" tried to release itself from the toysuit, but it's no use...";
+	
 	//They're not the toy.
 	throw userName+" tried to release "+toyName+" from its toysuit, but it's no use...";
 };
@@ -224,35 +208,28 @@ canRelease = function(userProfile, toyProfile) {
 //Returns a flavor-text string to output if the free succeeds, or throws an error string on failure.
 //Author: dawnmew
 canFree = function(userProfile, toyProfile) {
-
+	
 	var userID = userProfile['userID'];
 	var toyID = toyProfile['userID'];
 	var toyOwners = getRecursiveOwners(toyProfile);
 	var toyName = toyProfile.getName();
 	var userName = userProfile.getName();
-
+	
 	//Only an owner can free a toy.
 	if(toyOwners.indexOf(userID) < 0) {
-		if(userID == toyID) {
-			throw toyName + " tried to free itself from the toysuit entirely, but it's no use...";
-		}
+		if(userID == toyID) throw toyName + " tried to free itself from the toysuit entirely, but it's no use...";
 		throw userName + " tried to free " + toyName + " from its toysuit entirely, but it's no use...";
 	}
-
+	
 	//Only a released toy can be freed.
 	if(toyProfile.isSuited()) {
-		if(userID == toyID) {
-			throw toyName+" tried to free itself from the toysuit entirely, but it must be released first.";
-		}
-
+		if(userID == toyID) throw toyName+" tried to free itself from the toysuit entirely, but it must be released first.";
 		throw userName + " tried to free "+toyName+" from its toysuit entirely, but it must be released first.";
 	}
-
+	
 	//They have access. Free the toy.
-	if(userID == toyID)
-		return toyName+" freed themselves from the toysuit entirely!";
-	else
-		return userName+" freed "+toyName+" from the toysuit entirely!";
+	if(userID == toyID) return toyName+" freed themselves from the toysuit entirely!";
+	else return userName+" freed "+toyName+" from the toysuit entirely!";
 };
 
 //canSafeword
@@ -269,13 +246,11 @@ canSafeword = function(toyProfile) {
 		if(toyProfile.isSuited()){
             messageSender.sendMessage(toyProfile['userID'], "Hmm... no. I don't think so, toy. You're mine now.");
 			throw toyName + " attempted to use its safeword... but there is no escape for this toy.";
-		}else {
-			throw toyName + " attempted to use their safeword... but the toysuit still waits to reclaim them.";
-		}
+		}else throw toyName + " attempted to use their safeword... but the toysuit still waits to reclaim them.";
 	}
 
-	if((toyProfile['toy mode'] == null || toyProfile['toy mode'] == 'dom') && !toyProfile.isSuited())
-		return toyName + " used their safeword, clearing all toysuit settings.";
+	var toyType = toyProfile.getToyType();
+	if((toyType == null || toyType == 'dom') && !toyProfile.isSuited()) return toyName + " used their safeword, clearing all toysuit settings.";
 
 	return toyName +" used their safeword, freeing themselves from the toysuit entirely.";
 };
@@ -289,17 +264,15 @@ canSetInfo = function(userProfile, toyProfile) {
 	var userID = userProfile['userID'];
 	var toyID = toyProfile['userID'];
 	var toyOwners = getRecursiveOwners(toyProfile);
-
+	
 	//Only owners can do this.
 	if(toyOwners.indexOf(userID) < 0) {
 		throw toyProfile.getName()+" does not belong to you, so you can't set its info.";
 	}
-
+	
 	//It should be allowed, then.
-	if(toyID == userID)
-		return toyProfile.getName()+" has changed "+(toyProfile.isSuited()?'its':'their')+" `!info` description.";
-	else
-		return userProfile.getName()+" has changed the `!info` description for "+toyProfile.getName()+".";
+	if(toyID == userID) return toyProfile.getName() + " has changed " + toyProfile.getPronoun() + " `!info` description.";
+	else return userProfile.getName()+" has changed the `!info` description for " + toyProfile.getName() + ".";
 }
 
 //canSetKinks
@@ -311,19 +284,13 @@ canSetKinks = function(userProfile, toyProfile) {
 	var userID = userProfile['userID'];
 	var toyID = toyProfile['userID'];
 	var toyOwners = getRecursiveOwners(toyProfile);
-
+	
 	//Only owners can do this.
-	if(toyOwners.indexOf(userID) < 0) {
-		throw toyProfile.getName()+" does not belong to you, so you can't set its kinks.";
-	}
-
+	if(toyOwners.indexOf(userID) < 0) throw toyProfile.getName()+" does not belong to you, so you can't set its kinks.";
+	
 	//It should be allowed, then.
-	if(toyID == userID) {
-		return toyProfile.getName()+" has changed "+((toyProfile.isSuited())?'its':'their')+" `!kinks`.";
-	}
-	else {
-		return userProfile.getName() +" has changed the `!kinks` for "+toyProfile.getName()+".";
-	}
+	if(toyID == userID) return toyProfile.getName()+" has changed "+ toyProfile.getPronoun() + " `!kinks`.";
+	else return userProfile.getName() +" has changed the `!kinks` for " + toyProfile.getName() + ".";
 }
 
 //attemptSetNickname
@@ -341,26 +308,22 @@ attemptSetNickname = function(userProfile, toyProfile, nickname) {
 	if(toyOwners.indexOf(userID) < 0) {
 		throw oldName + " does not belong to you, so you can't set its nickname.";
 	}
-
+	
 	//It should be allowed, then.
 	if(nickname == '[reset]') {
 		nickname = null;
 	}
-
+	
 	toyProfile['nickname'] = nickname;
 	sessionKeeper.updateProfile(toyProfile);
-
+	
 	if(toyID == userID) {
-		if(nickname == null)
-		    return oldName+" has removed "+ toyProfile.getPronoun() +" nickname, and is known as \""+toyProfile['name']+"\" once more.";
-		else
-		    return oldName+" has changed "+ toyProfile.getPronoun() +" nickname to \""+nickname+"\"!";
+		if(nickname == null) return oldName+" has removed "+ toyProfile.getPronoun() +" nickname, and is known as \""+toyProfile['name']+"\" once more.";
+		else return oldName+" has changed "+ toyProfile.getPronoun() +" nickname to \""+nickname+"\"!";
 	}
 	else {
-		if(nickname == null)
-		    return userProfile.getName()+" has removed the nickname from "+oldName+", who is known as \""+toyProfile['name']+"\" once more.";
-		else
-		    return userProfile.getName()+" has set the nickname of "+oldName+" to \""+nickname+"\"!";
+		if(nickname == null) return userProfile.getName()+" has removed the nickname from "+oldName+", who is known as \""+toyProfile['name']+"\" once more.";
+		else return userProfile.getName()+" has set the nickname of "+oldName+" to \""+nickname+"\"!";
 	}
 }
 

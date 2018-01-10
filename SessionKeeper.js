@@ -1,5 +1,5 @@
-const fs = require('fs');
-const regression = require('regression');
+var fs = require('fs');
+var regression = require('regression');
 const profiles = require('./classes/UserProfile');
 
 var logger;
@@ -12,19 +12,19 @@ const TemplateProfile = new profiles.UserProfile(undefined);
 init = function(log, bot){
     logger = log;
 	discordBot = bot;
-
+	
 	if(!fs.existsSync('profiles')) {
 		logger.info('No profiles folder exists. Creating one now...');
 		fs.mkdirSync('profiles');
 	}
-
+	
 	var proFiles = fs.readdirSync('profiles');
-
+	
 	for(var i = 0, l = proFiles.length; i < l; i++) {
 		var file = proFiles[i];
 		var insensitive = file.toLowerCase();
 		if(!insensitive.startsWith('profile-') || !insensitive.endsWith('.json')) continue;
-
+		
 		//Remove 'profile-' prefix and '.json' suffix.
 		var profName = file.substr(8);
 		profName = profName.substr(0, profName.length-5);
@@ -35,20 +35,19 @@ init = function(log, bot){
 			logger.error('Couldn\'t load profile "'+file+'" because it is inaccessible or corrupted:',e);
 		}
 	}
-
+	
 	var users = discordBot.users;
-
+	
 	for(var key in users) {
 		var user = users[key];
 		if(user.bot) continue;
-		if(!profileCache.hasOwnProperty(user.id))
-		    profileCache[user.id] = new profiles.UserProfile();
+		if(!profileCache.hasOwnProperty(user.id)) profileCache[user.id] = new profiles.UserProfile();
 		var prof = profileCache[user.id];
 		prof['userID'] = user.id;
 		prof['name'] = user.username;
 		prof['discriminator'] = user.discriminator;
 	}
-
+	
     //var sessionCount = getSessionCount();
     //var toyList = getToyList();
     //logger.info("There are currently "+sessionCount+" sessions in storage:");
@@ -80,9 +79,9 @@ writeProfileToDisk = function(userID) {
 getProfileFromUserID = function(userID){
     //logger.info("getProfileFromUserID("+userID+")");
     var profile = profileCache[userID];
-
+    
 	if(profile) return profile;
-
+	
     //There is no user profile.
 	//Create one.
 	return createProfileFromUserID(userID);
@@ -110,21 +109,20 @@ getProfileFromUserName = function(username){
 }
 
 createProfileFromUserID = function(userID){
-
+	
 	var users = discordBot.users;
-
+	
 	if(!users.hasOwnProperty(userID)) {
 		//logger.error('User ID "'+userID+'" does not exist, but was passed to createProfileFromUserID?');
 		//console.trace("DEBUG: Stack trace for bad createProfileFromUserID call:");
 		return null;
 	}
-
+	
 	var user = users[userID];
-	var name = user.username;
 
     var profile = new profiles.UserProfile();
     profile['userID'] = userID;
-    profile['name'] = name;
+    profile['name'] = user.username;
 	profile['discriminator'] = user.discriminator;
 	profileCache[userID] = profile;
 	writeProfileToDisk(userID);
@@ -133,26 +131,26 @@ createProfileFromUserID = function(userID){
 
 createProfileFromUsername = function(username) {
 	var users = discordBot.users;
-
+	
 	for(var i = 0, l = users.length; i < l; i++) {
 		var user = users[i];
 		if(username && (user.username.toLowerCase().trim() == username.toLowerCase().trim() || ('<@'+user.id+'>' == username))) {
 			return createProfileFromUserID(user.id);
 		}
 	}
-
+	
 	return null; //Couldn't find that username.
 }
 
 deleteProfile = function(profileOrUserID) {
-
+	
 	var uid;
-
+	
 	if(typeof profileOrUserID === 'object' && profileOrUserID && profileOrUserID.userID) uid = profileOrUserID.userID;
 	else uid = profileOrUserID;
-
+	
 	delete profileCache[uid];
-
+	
 	try{
 		fs.unlinkSync('profiles/profile-'+uid+'.json');
 	}catch(e){}
@@ -237,6 +235,11 @@ updateSyncState = function(profile){
     }
     syncState = getSyncState(profile);
     return (syncState - prevState);
+}
+
+getOwner = function (profile){
+    if(!profile['ownerID']) return null;
+    return getProfileFromUserID(profile['ownerID']);
 }
 
 getToyTypeSymbol = function(profile){
