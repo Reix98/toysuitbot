@@ -48,9 +48,8 @@ handleMessage = function(user, userID, channelID, message, evt){
     });
 
     
-    if(userProfile['mode'] == "suited"){
-        var name = userProfile['name'];
-        if(userProfile['nickname'] != null) name = userProfile['nickname'];
+    if(userProfile.isSuited()){
+        var name = userProfile.getName();
         deleteMessage(channelID, evt.d.id);
         var syncLevel = sk.getSyncLevel(userProfile);
         var syncState = sk.getSyncState(userProfile);

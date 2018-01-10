@@ -200,7 +200,7 @@ whisperToy = function(userID){
                 if(action.type == "message"){
                     //debug(userID, 'test4');
                     var message = action.text;
-                    message = message.replaceAll("[name]", profile['name']);
+                    message = message.replaceAll("[name]", profile.getName());
                     message = message.replaceAll("[type]", toyType);
                     action.text = message;
                 }
