@@ -1,5 +1,6 @@
 class UserProfile{
   constructor(props){
+    
     props = props || {}
 
     var profile = this
@@ -21,7 +22,7 @@ class UserProfile{
     profile['ownerID'] = null
     profile['info'] = '[Info not set]'
     profile['kinks'] = '[Kinks not set]'
-    profile['toy mode'] = null
+    profile['toyType'] = null
     profile['beta access list'] = []
     profile['can safeword'] = true
     profile['sync level'] = 0
@@ -40,11 +41,11 @@ class UserProfile{
    * @return String
    */
   getName() {
-    if (!this['nickname'] || !this.isSuited()) {
-      return this['name'] // The real name
+    if (!this.nickname || !this.isSuited()) {
+      return this.name; // The real name
     }
 
-    return this['nickname']; // The toy name
+    return this.nickname; // The toy name
   }
 
   /**
@@ -112,23 +113,27 @@ class UserProfile{
    * @returns String
    */
   getToyType () {
-    return this['toy mode']
+    return this.toyType;
+  }
+
+  setType(toyType){
+    this.toyType = toyType;
   }
 
   isGagged () {
-    return this['gagged']
+    return this.gagged;
   }
 
   toggleGag () {
-    this['gagged'] = !this['gagged']
+    this.gagged = !this.gagged;
   }
 
   isControlled () {
-    return this['controlled']
+    return this.controlled;
   }
 
   toggleControl () {
-    this['controlled'] = !this['controlled'];
+    this.controlled = !this.controlled;
   }
 }
 

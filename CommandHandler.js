@@ -393,7 +393,7 @@ setTimer = function(profile, args, context){
         targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
         if(targetProfile == null) throw "That user doesn't exist.";
         if(targetProfile['ownerID'] != context.userID &&
-            !(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
+            !(targetProfile.getToyType() == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
         ) throw "You do not own them"
         time = args[1];
     }
@@ -474,27 +474,27 @@ setToyType = function(profile, args, context){
         userProfile = sessionKeeper.getProfileFromUserID(context.userID);
         if(targetProfile == null) throw "That user doesn't exist.";
         if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
-        if(userProfile.isSuited() && userProfile['toy mode'] == null) throw "Toys without a set type cannot set other toys' types"
+        if(userProfile.isSuited() && userProfile.getToyType() == null) throw "Toys without a set type cannot set other toys' types"
         type = args[1];
     }
     if(!targetProfile.isSuited()) throw "Target not wearing a toysuit"
-    if(targetProfile['toy mode'] != null && sessionKeeper.getRemainingTimerSeconds(targetProfile) > 0) throw "Cannot change toy type once timer is set"
+    if(targetProfile.getToyType() != null && sessionKeeper.getRemainingTimerSeconds(targetProfile) > 0) throw "Cannot change toy type once timer is set"
 
     type = type.toLowerCase();
     switch(type){
         case("alpha"):
             if(userProfile.isSuited()) throw "Toys cannot create alpha toys"
-            targetProfile['toy mode'] = "alpha";
+            targetProfile.setToyType("alpha");
 			messageSender.sendAction(context.channelID, targetProfile.getName()+" is now an alpha (α) toy!");
             break;
         case("beta"):
-            if(userProfile.isSuited() && userProfile['toy mode'] != "alpha") throw "Non-alpha toys cannot create beta toys"
-            targetProfile['toy mode'] = "beta";
+            if(userProfile.isSuited() && userProfile.getToyType() != "alpha") throw "Non-alpha toys cannot create beta toys"
+            targetProfile.setToyType("beta");
 			messageSender.sendAction(context.channelID, targetProfile.getName()+" is now a beta (β) toy!");
             break;
         case("omega"):
-            if(userProfile.isSuited() && userProfile['toy mode'] == "omega") throw "Omega toys cannot create toys"
-            targetProfile['toy mode'] = "omega";
+            if(userProfile.isSuited() && userProfile.getToyType() == "omega") throw "Omega toys cannot create toys"
+            targetProfile.setToyType("omega");
 			messageSender.sendAction(context.channelID, targetProfile.getName()+" is now an omega (ω) toy!");
             break;
     }
@@ -516,15 +516,23 @@ toyType = function(profile, args, context){
         if(targetProfile == null) throw "That user doesn't exist.";
         if(!targetProfile.isSuited()) throw "Target not toysuited"
     }
-    type = targetProfile['toy mode'];
-    if(type == null) throw "Toy type not set"
 
     var typeText = "";
-    switch(type){
-		case("dom"): typeText = "a dominant"; break;
-        case("alpha"): typeText = "an alpha (α) toy"; break;
-        case("beta"): typeText = "a beta (β) toy"; break;
-        case("omega"): typeText = "an omega (ω) toy"; break;
+    switch(targetProfile.getToyType()){
+        case("dom"): 
+            typeText = "a dominant"; 
+            break;
+        case("alpha"): 
+            typeText = "an alpha (α) toy"; 
+            break;
+        case("beta"):
+            typeText = "a beta (β) toy"; 
+            break;
+        case("omega"): 
+            typeText = "an omega (ω) toy"; 
+            break;
+        default:
+            throw "Toy type was not set";
     }
 
     messageSender.sendAction(context.channelID, targetProfile.getName()+" is "+typeText+".");
@@ -536,7 +544,7 @@ setTimerBonus = function(profile, args, context){
     var targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
     if(targetProfile == null) throw "That user doesn't exist.";
     if(targetProfile['ownerID'] != context.userID &&
-        !(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
+        !(targetProfile.getToyType() == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
     ) throw "You do not own them"
     if(!targetProfile.isSuited()) throw "Target not wearing a toysuit"
     if(targetProfile['suit timer bonus amount'] != null) throw "Suit timer bonus already set"
@@ -564,7 +572,7 @@ triggerBonus = function(profile, args, context){
     var targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
     if(targetProfile == null) throw "That user doesn't exist.";
     if(targetProfile['ownerID'] != context.userID &&
-        !(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
+        !(targetProfile.getToyType() == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
     ) throw "You do not own them"
     if(!targetProfile.isSuited()) throw "Target not wearing a toysuit"
 
@@ -582,7 +590,7 @@ control = function(profile, args, context, override){
     if(targetProfile == null) throw "That user doesn't exist.";
     if(!override){
         if(targetProfile['ownerID'] != context.userID &&
-            !(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
+            !(targetProfile.getToyType() == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
         ) throw "You do not own them"
         if(!targetProfile.isSuited()) throw "Target not wearing a toysuit"
     }
@@ -645,7 +653,7 @@ say = function(profile, args, context){
     var message = args.join(", ");
     if(targetProfile == null) throw "That user doesn't exist.";
     if(targetProfile['ownerID'] != context.userID &&
-        !(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
+        !(targetProfile.getToyType() == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
     ) throw "You do not own them"
     if(!targetProfile.isSuited()) throw "Target not wearing a toysuit"
 
@@ -665,7 +673,7 @@ voice = function(profile, args, context){
     var message = args.join(", ");
     if(targetProfile == null) throw "That user doesn't exist.";
     if(targetProfile['ownerID'] != context.userID &&
-        !(targetProfile['toy mode'] == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
+        !(targetProfile.getToyType() == "omega" && targetProfile['ownerID'] == targetProfile['userID'])
     ) throw "You do not own them"
     if(!targetProfile.isSuited()) throw "Target not wearing a toysuit"
 

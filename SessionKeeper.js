@@ -239,13 +239,8 @@ updateSyncState = function(profile){
     return (syncState - prevState);
 }
 
-getOwner = function(profile){
-    if(!profile['ownerID']) return null;
-    return getProfileFromUserID(profile['ownerID']);
-}
-
 getToyTypeSymbol = function(profile){
-    switch(profile['toy mode']){
+    switch(profile.getToyType()){
         case('alpha'): return "α";
         case('beta'): return "β";
         case('omega'): return "ω";
