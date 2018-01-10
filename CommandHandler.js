@@ -587,11 +587,10 @@ control = function(profile, args, context, override){
         if(!targetProfile.isSuited()) throw "Target not wearing a toysuit"
     }
 
-    if(targetProfile['controlled']) targetProfile['controlled'] = false;
-    else targetProfile['controlled'] = true;
+    targetProfile.toggleControl();
 
     sessionKeeper.updateProfile(targetProfile);
-    if(targetProfile['controlled']){
+    if(targetProfile.isControlled()){
         messageSender.sendAction(context.channelID, targetProfile.getName()+"'s suit has taken full control of their body.");
         messageSender.sendAction(targetProfile['userID'], 'You feel the suit take full control of your body.');
     }else{

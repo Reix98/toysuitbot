@@ -147,7 +147,7 @@ whisperToy = function(userID){
             {type: "message", time: 2, channelID: toyID, text: "Keep it up, toy."}
         ], i++);
     
-        if(false && !profile['controlled'] && matches(status, null, [null, 0], [null, -1])) dataset = addOption(dataset, 1, 0, [
+        if(false && !profile.isControlled() && matches(status, null, [null, 0], [null, -1])) dataset = addOption(dataset, 1, 0, [
             {type: "message", time: 0,          channelID: toyID,           text: "I think you need some motivation, toy."},
             {type: "command", time: 1,          userID: toyID,              name: "control"},
             {type: "message", time: 2,          channelID: lastChannelID,   text: msgPrefix+"*"+rwc(goodToyText)+"*"},

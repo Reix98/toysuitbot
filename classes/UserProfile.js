@@ -122,6 +122,14 @@ UserProfile.prototype.toggleGag = function () {
   this['gagged'] = !this['gagged']
 }
 
+UserProfile.prototype.isControlled = function () {
+  return this['controlled']
+}
+
+UserProfile.prototype.toggleControl = function () {
+    this['controlled'] = !this['controlled'];
+}
+
 module.exports = {
   UserProfile: UserProfile
 }

@@ -37,7 +37,7 @@ getRecursiveOwners = function(toyProfile) {
 //Returns 'true' if this is permitted, 'false' if otherwise.
 //Author: dawnmew
 canControlType = function(userProfile, toyProfile) {
-	var userType = userProfile['toy mode'];
+	var userType = userProfile.getToyMode();
 	var toyType = toyProfile['toy mode'];
 
 	//Dominants and alphas can control everything. So can typeless toys.
@@ -61,7 +61,6 @@ canControlType = function(userProfile, toyProfile) {
 attemptToysuit = function(userProfile, toyProfile) {
 	var userID = userProfile['userID'];
 	var toyID = toyProfile['userID'];
-	var toyOwners = getRecursiveOwners(toyProfile);
 
 	//Dominants can never be toysuited.
 	if(toyProfile['toy mode'] == 'dom') {
@@ -75,6 +74,7 @@ attemptToysuit = function(userProfile, toyProfile) {
 	//Is the user an owner? Or are there no owners at all?
 	//If the wearer is a beta, how about the whitelist?
 	//If the wearer is an omega, anyone can toysuit them at any time.
+	var toyOwners = getRecursiveOwners(toyProfile);
 	if(
 		toyOwners.length < 1
 		|| toyOwners.indexOf(userID) >= 0

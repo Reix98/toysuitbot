@@ -61,7 +61,7 @@ handleMessage = function(user, userID, channelID, message, evt){
         if(message.charAt(0) == "(" && userProfile['parens allowed']){
             //Repost message as-is.
             messageSender.sendMessage(channelID, sync + "**" + name + "**: " + message);
-        }else if(userProfile['controlled']){
+        }else if(userProfile.isControlled()){
             //Do nothing with the message.
         }else if(userProfile.isGagged()){
             message = textComp.gaggedMessage(message);
