@@ -10,22 +10,22 @@ This is a node module that contains a toy suit application for your Discord serv
 | `!debug` | Turns on debugging                              |
 
 #### Toysuit commands
-| Command                                         | What it does                                         |
-|-------------------------------------------------|------------------------------------------------------|
-| `!toysuit <username>`                           | Puts a user in a toy suit (you if none is specified) |
-| `!release <username>`                           | Releases a user from the suit                        |
-| `!free <username>`                              | Resets the toys statistic                            |
-| `!safeword`                                     | The toy frees itself from the suit                   |
-| `!remove_safeword`                              | Removes the ability to use the safeword              |
-| `!info <username>`                              | Provides information about a user / toy              |
-| `!setinfo` or `!set_info`                       | Sets information about a toy                         |
-| `!kinks <username>`                             | Gets the kinks of a toy                              |
-| `!set_kinks`                                    | Sets the kinks of a toy                              |
-| `!setnickname` or `!set_nickname`               | Sets the nickname of a toy                           |
-| `!settimer` or `!set_timer`                     | Sets a timer how long the suit has to be worn        |
-| `!timer`                                        | Gets the time remaining                              |
-| `!cleartimer` or `!clear_timer`                 | Removes the time constrain                           |
-| `!settoytype` or `!set_toy_type`                | Sets the type of toy (alpha, beta or omega)          |
+| Command                                          | What it does                                         |
+|--------------------------------------------------|------------------------------------------------------|
+| `!toysuit <username>`                            | Puts a user in a toy suit (you if none is specified) |
+| `!release <username>`                            | Releases a user from the suit                        |
+| `!free <username>`                               | Resets the toys statistic                            |
+| `!safeword`                                      | The toy frees itself from the suit                   |
+| `!remove_safeword`                               | Removes the ability to use the safeword              |
+| `!info <username>`                               | Provides information about a user / toy              |
+| `!setinfo <username>, <info>` or `!set_info ...` | Sets information about a toy                         |
+| `!kinks <username>`                              | Gets the kinks of a toy                              |
+| `!set_kinks <username>, Kinks.`                  | Sets the kinks of a toy                              |
+| `!setnickname` or `!set_nickname`                | Sets the nickname of a toy                           |
+| `!settimer <username>, <min>:<sec>` or `!set_timer ...`                      | Sets a timer how long the suit has to be worn        |
+| `!timer`                                         | Gets the time remaining                              |
+| `!cleartimer` or `!clear_timer`                  | Removes the time constrain                           |
+| `!settoytype <username>, <toytype>` or `!set_toy_type ...` | Sets the type of toy (alpha, beta or omega)          |
 | `!toytype <username>` or `!toy_type <username>` | Gets the toy type                                    |
 | `!settimerbonus` or `!set_timer_bonus`          | Sets a timer bonus                                   |
 | `!triggerbonus` or `!trigger_bonus`             | Triggers a bonus for the toy                         |
