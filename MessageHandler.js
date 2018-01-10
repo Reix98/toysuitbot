@@ -63,7 +63,7 @@ handleMessage = function(user, userID, channelID, message, evt){
             messageSender.sendMessage(channelID, sync + "**" + name + "**: " + message);
         }else if(userProfile['controlled']){
             //Do nothing with the message.
-        }else if(userProfile['gagged']){
+        }else if(userProfile.isGagged()){
             message = textComp.gaggedMessage(message);
             messageSender.sendMessage(channelID, sync + "**" + name + "**: " + message);
         }else{
@@ -129,7 +129,7 @@ handleMessage = function(user, userID, channelID, message, evt){
                 var stateChangeText = "";
                 if(syncState == -2 && stateChange == -1){
                     stateChangeText = "[name]'s suit tightens controllingly, its motions becoming smooth and mechanical as the suit grows thick and restrictive. [name]'s features become totally artificial and toylike, its expression fixed and staring, all its paws round and useless.";
-                    if(userProfile['gagged'] == false){
+                    if(userProfile.isGagged() == false){
                         setTimeout(function(){
                             messageSender.sendAction(channelID, name+"'s gag swells, leaving its mouth usable only as a hole to fuck.");
                         }, 750);
@@ -140,7 +140,7 @@ handleMessage = function(user, userID, channelID, message, evt){
                 }
                 if(syncState == -1 && stateChange == 1){
                     stateChangeText = "[name]'s suit squirms as its features become more mobile, though still rounded and artificial. Its expression becomes more mobile as its paws grow more dextrous, while remaining rounded and toyish.";
-                    if(userProfile['gagged'] == false){
+                    if(userProfile.isGagged() == false){
                         setTimeout(function(){
                             messageSender.sendAction(channelID, name+"'s gag deflates, allowing it to talk again.");
                         }, 750);

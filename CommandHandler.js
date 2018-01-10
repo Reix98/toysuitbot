@@ -596,31 +596,34 @@ control = function(profile, args, context, override){
 
 gag = function(profile, args, context){
     requirePM(context);
-    if(args.length != 1) throw "Wrong number of arguments";
-    var targetProfile = sessionKeeper.getProfileFromUserName(args[0]);
+    var username = args.length !== 1 ? profile.getName() : args[0];
+    var targetProfile = sessionKeeper.getProfileFromUserName(username);
+
     if(targetProfile == null) throw "That user doesn't exist.";
     if(targetProfile['ownerID'] != context.userID) throw "You do not own them"
     if(!targetProfile.isSuited()) throw "Target not wearing a toysuit"
 
-    if(targetProfile['gagged']) targetProfile['gagged'] = false;
-    else targetProfile['gagged'] = true;
-
+    targetProfile.toggleGag();
+    
     sessionKeeper.updateProfile(targetProfile);
+    
+    var message = '';
     var targetProfileName = targetProfile.getName();
-
-    if(targetProfile['gagged']){
+    if(targetProfile.isGagged()){
         if(sk.getSyncState(targetProfile) == -2){
-            messageSender.sendAction(context.channelID, targetProfileName +" is already gagged by their toysuit.");
+            message = targetProfileName +" is already gagged by their toysuit.";
         }else{
-            messageSender.sendAction(context.channelID, targetProfileName +"'s gag swells, leaving its mouth usable only as a hole to fuck.");
+            message = targetProfileName +"'s gag swells, leaving its mouth usable only as a hole to fuck.";
         }
     }else{
         if(sk.getSyncState(targetProfile) == -2){
-            messageSender.sendAction(context.channelID, targetProfileName +"'s gag would have deflated if their suit would allow it.");
+            message = targetProfileName +"'s gag would have deflated if their suit would allow it.";
         }else{
-            messageSender.sendAction(context.channelID, targetProfileName +"'s gag deflates, allowing it to talk again.");
+            message = targetProfileName +"'s gag deflates, allowing it to talk again.";
         }
     }
+
+    messageSender.sendAction(context.channelID, message);
 }
 
 me = function(profile, args, context){
