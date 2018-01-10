@@ -260,26 +260,26 @@ safeword = function(profile, args, context){
 removeSafeword = function(profile, args, context){
     if(args.length > 1) throw "Wrong number of arguments";
     var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
-    if(args.length == 0){
+    if(args.length == 0) {
+        // Confirmation for removing safeword
         messageSender.sendMessage(profile['userID'], "Are you sure you want to do that? Reply `!remove_safeword yes` if you are, toy.");
-    }
-    if(args.length == 1){
-        if(args[0] == "yes"){
-            profile['can safeword'] = false;
-            sessionKeeper.updateProfile(profile);
-            messageSender.sendMessage(profile['userID'], "Very well toy. You're mine now.");
-            messageSender.sendMessage(profile['lastChannelID'], userProfile.getName()+" has removed their safeword. What a good toy.");
-        }
+    } else if(args.length == 1 && args[0] == "yes") {
+        // Removing safeword
+        profile['can safeword'] = false;
+        sessionKeeper.updateProfile(profile);
+        messageSender.sendMessage(profile['userID'], "Very well toy. You're mine now.");
+        messageSender.sendMessage(profile['lastChannelID'], userProfile.getName()+" has removed their safeword. What a good toy.");
     }
 }
 
 info = function(profile, args, context){
-    if(args.length > 1) throw "Wrong number of arguments";
     var userProfile;
-    if(args.length == 0){
+    if (args.length == 0) {
         userProfile = sessionKeeper.getProfileFromUserID(context.userID);
-    }else if(args.length == 1){
+    } else if(args.length == 1) {
         userProfile = sessionKeeper.getProfileFromUserName(args[0]);
+    } else {
+        throw "Wrong number of arguments";
     }
     if(userProfile == null) throw "That user doesn't exist."
 
@@ -287,7 +287,7 @@ info = function(profile, args, context){
     if(userProfile.isSuited()){
         info += userProfile.getName()+" is a toy. ";
         if(userProfile['ownerID'] == null) info += "They have no owner.";
-        else info += "They are owned by " + getOwner(userProfile)['name'];
+        else info += "They are owned by " + getOwner(userProfile).getName();
     }
     info += "\nInfo: "+userProfile['info'];
     messageSender.sendMessage(context.userID, info);
@@ -318,23 +318,29 @@ setInfo = function(profile, args, context){
 }
 
 kinks = function(profile, args, context){
-    if(args.length > 1) throw "Wrong number of arguments";
+    if (args.length > 1) {
+        throw "Wrong number of arguments";
+    }
+    
     var userProfile;
     if(args.length == 0){
         userProfile = sessionKeeper.getProfileFromUserID(context.userID);
     }else if(args.length == 1){
         userProfile = sessionKeeper.getProfileFromUserName(args[0]);
     }
-    if(userProfile == null) throw "That user doesn't exist."
+    if (userProfile == null) {
+        throw "That user doesn't exist.";
+    }
 
     var kinks = userProfile['kinks'];
     messageSender.sendMessage(context.userID, userProfile['name']+"'s kinks:\n"+kinks);
 }
 
 setKinks = function(profile, args, context){
-    if(args.length == 0) throw "Wrong number of arguments";
+    if(args.length == 0) {
+        throw "Wrong number of arguments";
+    }
     var kinks;
-
 	var userProfile = sessionKeeper.getProfileFromUserID(context.userID);
 	var toyProfile = null;
 	if(args.length > 1) {
