@@ -121,7 +121,7 @@ whisperToy = function(userID){
         var syncLevel = sk.getSyncLevel(profile);
         var syncText = Math.max(-99, Math.min(100, Math.round(syncLevel)))+"%";
         while(syncText.length<4) syncText = " "+syncText;
-        syncText = "`"+sk.getToyTypeSymbol(profile)+"["+syncText+"]`";
+        syncText = "`"+profile.getToyTypeSymbol()+"["+syncText+"]`";
 
         var status = {};
         status.profile = profile;

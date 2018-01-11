@@ -242,15 +242,6 @@ getOwner = function (profile){
     return getProfileFromUserID(profile['ownerID']);
 }
 
-getToyTypeSymbol = function(profile){
-    switch(profile.getToyType()){
-        case('alpha'): return "α";
-        case('beta'): return "β";
-        case('omega'): return "ω";
-    }
-    return "?";
-}
-
 getNextLowestToyType = function(type){
     switch(type){
 		case("dom"): return "alpha";
@@ -315,7 +306,6 @@ module.exports = {
 	deleteProfile: deleteProfile,
     getRemainingTimerSeconds: getRemainingTimerSeconds,
     getOwner: getOwner,
-    getToyTypeSymbol: getToyTypeSymbol,
     getNextLowestToyType: getNextLowestToyType,
     readableTime: readableTime,
     getSyncLevel: getSyncLevel,

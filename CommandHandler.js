@@ -333,7 +333,7 @@ kinks = function(profile, args, context){
     if(userProfile == null) throw "That user doesn't exist.";
 
     var kinks = userProfile['kinks'];
-    messageSender.sendMessage(context.userID, userProfile['name']+"'s kinks:\n"+kinks);
+    messageSender.sendMessage(context.userID, userProfile.getName()+"'s kinks:\n"+kinks);
 }
 
 setKinks = function(profile, args, context){
@@ -649,7 +649,7 @@ say = function(profile, args, context){
     var syncLevel = sk.getSyncLevel(targetProfile);
     var sync = Math.max(-99, Math.min(100, Math.round(syncLevel)))+"%";
     while(sync.length<4) sync = " "+sync;
-    sync = "`"+sk.getToyTypeSymbol(targetProfile)+"["+sync+"]`";
+    sync = "`"+targetProfile.getToyTypeSymbol()+"["+sync+"]`";
 
     messageSender.sendMessage(profile['lastChannelID'], sync + "**" + targetProfile.getName() + "**: " + "__"+message+"__");
 }

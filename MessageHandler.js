@@ -55,7 +55,7 @@ handleMessage = function(user, userID, channelID, message, evt){
         var syncState = sk.getSyncState(userProfile);
         var sync = Math.max(-99, Math.min(100, Math.round(syncLevel)))+"%";
         while(sync.length<4) sync = " "+sync;
-        sync = "`"+sk.getToyTypeSymbol(userProfile)+"["+sync+"]`";
+        sync = "`"+userProfile.getToyTypeSymbol()+"["+sync+"]`";
 
         if(message.charAt(0) == "(" && userProfile['parens allowed']){
             //Repost message as-is.
@@ -90,7 +90,7 @@ handleMessage = function(user, userID, channelID, message, evt){
 
             sync = Math.max(-99, Math.min(100, Math.round(syncLevel)))+"%";
             while(sync.length<4) sync = " "+sync;
-            sync = "`"+sk.getToyTypeSymbol(userProfile)+"["+sync+"]`";
+            sync = "`"+userProfile.getToyTypeSymbol()+"["+sync+"]`";
 
             var opinion = syncLevel + toyBrainData*20;
 
