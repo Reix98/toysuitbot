@@ -37,7 +37,7 @@ getRecursiveOwners = function(toyProfile) {
 //Returns 'true' if this is permitted, 'false' if otherwise.
 //Author: dawnmew
 canControlType = function(userProfile, toyProfile) {
-	var userType = userProfile.getToyMode();
+	var userType = userProfile.getToyType();
 	var toyType = toyProfile['toy mode'];
 	
 	//Dominants and alphas can control everything. So can typeless toys.
