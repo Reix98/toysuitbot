@@ -33,7 +33,7 @@ function UserProfile(props) {
     profile['ownerID'] = null;
     profile['info'] = "[Info not set]";
     profile['kinks'] = "[Kinks not set]";
-    profile['toy mode'] = null;
+    profile['toy mode'] = 'alpha';
 	profile['beta access list'] = [];
     profile['can safeword'] = true;
     profile['sync level'] = 0;
